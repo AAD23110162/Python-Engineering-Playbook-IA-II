@@ -14,8 +14,8 @@ Autor: Alejandro Aguirre Díaz
 def inicializar_valores(estados, valor_inicial=0.0):
     """
     Inicializa la función de valor V(s) = valor_inicial para todos los estados.
-    :param estados: lista de etiquetas de estados
-    :param valor_inicial: valor numérico para iniciar
+    :parametro estados: lista de etiquetas de estados
+    :parametro valor_inicial: valor numérico para iniciar
     :return: dict estado -> valor
     """
     # Crea un diccionario con cada estado y el valor inicial
@@ -25,12 +25,12 @@ def actualizar_valor(estado, acciones, P, R, V_ant, gamma):
     """
     Calcula el nuevo valor de V(estado) usando la ecuación de Bellman-óptima:
     V'(s) = max_a Σ_{s'} P(s'|s,a) [ R(s,a,s') + γ·V_ant(s') ]
-    :param estado: etiqueta de estado
-    :param acciones: lista de acciones posibles
-    :param P: dict: (s,a) -> dict de s'->probabilidad
-    :param R: dict: (s,a,s') -> recompensa
-    :param V_ant: dict estado->valor de la iteración anterior
-    :param gamma: factor de descuento (0 ≤ γ < 1)
+    :parametro estado: etiqueta de estado
+    :parametro acciones: lista de acciones posibles
+    :parametro P: dict: (s,a) -> dict de s'->probabilidad
+    :parametro R: dict: (s,a,s') -> recompensa
+    :parametro V_ant: dict estado->valor de la iteración anterior
+    :parametro gamma: factor de descuento (0 ≤ γ < 1)
     :return: nuevo valor numérico de V(estado)
     """
     mejor = float('-inf')
@@ -54,9 +54,9 @@ def actualizar_valor(estado, acciones, P, R, V_ant, gamma):
 def derivar_politica(estados, acciones, P, R, V, gamma):
     """
     Deriva la política óptima π(s) = argmax_a Σ_{s'} P(s'|s,a)[ R(s,a,s') + γ·V(s') ]
-    :param estados: lista de estados
-    :param acciones: lista de acciones
-    :param P, R, V, gamma: como anteriormente
+    :parametro estados: lista de estados
+    :parametro acciones: lista de acciones
+    :parametro P, R, V, gamma: como anteriormente
     :return: dict estado->acción óptima
     """
     politica = {}
@@ -84,13 +84,13 @@ def derivar_politica(estados, acciones, P, R, V, gamma):
 def iteracion_de_valores(estados, acciones, P, R, gamma=0.9, theta=1e-6, max_iter=1000):
     """
     Ejecuta el algoritmo de iteración de valores mostrando el proceso paso-a-paso:
-    :param estados: lista de estados
-    :param acciones: lista de acciones
-    :param P: dict (s,a)->dict s'->probabilidad
-    :param R: dict (s,a,s')→recompensa
-    :param gamma: factor de descuento
-    :param theta: umbral de convergencia
-    :param max_iter: número máximo de iteraciones permitidas
+    :parametro estados: lista de estados
+    :parametro acciones: lista de acciones
+    :parametro P: dict (s,a)->dict s'->probabilidad
+    :parametro R: dict (s,a,s')→recompensa
+    :parametro gamma: factor de descuento
+    :parametro theta: umbral de convergencia
+    :parametro max_iter: número máximo de iteraciones permitidas
     :return: (V, π) donde V es dict estado->valor óptimo, π estado->acción óptima
     """
     V = inicializar_valores(estados)
