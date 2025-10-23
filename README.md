@@ -1,8 +1,8 @@
 # Python-Engineering-Playbook-IA-II
 
 
-**Autor:** Alejandro Aguirre Díaz.
-**Descripción:** Continuación directa del repositorio Python-Engineering-Playbook-IA, pero esta vez centrado en algoritmos de búsqueda, toma de decisiones y aprendizaje automático.
+**Autor:** Alejandro Aguirre Díaz.  
+**Descripción:** Continuación directa del repositorio Python-Engineering-Playbook-IA, pero esta vez centrado en algoritmos de búsqueda, toma de decisiones y aprendizaje automático.    
 **Ultima modificación**: Jueves 23 de octubre del 2025.
 
 ---
