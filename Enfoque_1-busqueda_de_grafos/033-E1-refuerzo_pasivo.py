@@ -24,12 +24,12 @@ import random
 def simular_politica(estados, transiciones, recompensas, politica, gamma, episodios, max_pasos=50):
     """
     Simula la política fija π durante varios episodios para estimar utilidades usando Monte Carlo.
-    :param estados: lista de estados posibles
-    :param transiciones: dict (s, a) → dict s' → probabilidad
-    :param recompensas: dict (s,a,s') → recompensa inmediata
-    :param politica: dict s → acción fija
-    :param gamma: factor de descuento (0 ≤ γ < 1)
-    :param episodios: número de episodios a ejecutar
+    :parametro estados: lista de estados posibles
+    :parametro transiciones: dict (s, a) → dict s' → probabilidad
+    :parametro recompensas: dict (s,a,s') → recompensa inmediata
+    :parametro politica: dict s → acción fija
+    :parametro gamma: factor de descuento (0 ≤ γ < 1)
+    :parametro episodios: número de episodios a ejecutar
     :param max_pasos: número máximo de pasos por episodio
     :return: dict estado→estimación promedio de U^π(s)
     """
