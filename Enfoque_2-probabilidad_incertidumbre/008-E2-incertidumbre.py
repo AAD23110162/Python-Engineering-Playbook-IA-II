@@ -36,7 +36,7 @@ class ConjuntoDifuso:
         Calcula el grado de pertenencia de x al conjunto difuso.
         Debe ser implementado por las subclases.
         
-        :param x: valor a evaluar
+        :parametro x: valor a evaluar
         :return: grado de pertenencia en [0, 1]
         """
         raise NotImplementedError("Debe implementarse en subclases")
@@ -47,10 +47,10 @@ class ConjuntoDifusoTriangular(ConjuntoDifuso):
     def __init__(self, nombre, a, b, c):
         """
         Inicializa con parámetros de la función triangular.
-        
-        :param a: inicio (pertenencia = 0)
-        :param b: pico (pertenencia = 1)
-        :param c: fin (pertenencia = 0)
+
+        :parametro a: inicio (pertenencia = 0)
+        :parametro b: pico (pertenencia = 1)
+        :parametro c: fin (pertenencia = 0)
         """
         super().__init__(nombre)
         self.a = a
@@ -76,11 +76,11 @@ class ConjuntoDifusoTrapezoidal(ConjuntoDifuso):
     def __init__(self, nombre, a, b, c, d):
         """
         Inicializa con parámetros trapezoidales.
-        
-        :param a: inicio rampa ascendente
-        :param b: fin rampa ascendente (inicio meseta)
-        :param c: inicio rampa descendente (fin meseta)
-        :param d: fin rampa descendente
+
+        :parametro a: inicio rampa ascendente
+        :parametro b: fin rampa ascendente (inicio meseta)
+        :parametro c: inicio rampa descendente (fin meseta)
+        :parametro d: fin rampa descendente
         """
         super().__init__(nombre)
         self.a = a
@@ -111,8 +111,8 @@ class IntervaloProbabilidad:
         """
         Inicializa un intervalo de probabilidad.
         
-        :param limite_inferior: cota inferior (mínima probabilidad)
-        :param limite_superior: cota superior (máxima probabilidad)
+        :parametro limite_inferior: cota inferior (mínima probabilidad)
+        :parametro limite_superior: cota superior (máxima probabilidad)
         """
         # Aseguramos que el intervalo esté bien definido dentro de [0,1]
         assert 0 <= limite_inferior <= limite_superior <= 1, "Límites deben estar en [0, 1]"
