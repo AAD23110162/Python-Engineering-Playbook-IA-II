@@ -25,10 +25,13 @@ class NodoBooleano:
 		self.nombre = nombre
 		self.padres = padres[:]
 		# CPT: {tuple(valores_padres_bool): P(X=True|padres)}
+		# Para nodos raíz la clave es la tupla vacía ()
+		# Ejemplo: si padres=['B','E'], la clave es (asig['B'], asig['E'])
 		self.cpt: Dict[tuple, float] = {}
 	
 	def establecer_cpt(self, cpt: Dict[tuple, float]):
 		"""Establece la tabla de probabilidad condicional."""
+		# Normalizamos las claves a tuplas para evitar claves tipo lista no hashable
 		self.cpt = {tuple(k): v for k, v in cpt.items()}
 	
 	def prob_dado_padres(self, asignacion: Dict[str, bool]) -> float:
@@ -36,7 +39,8 @@ class NodoBooleano:
 		if not self.padres:
 			# Nodo raíz: clave vacía
 			return self.cpt[()]
-		# Construir clave con valores de padres
+		# Construir clave con valores de padres en el orden declarado
+		# Importante: el orden en self.padres define el orden de la tupla-clave
 		clave = tuple(asignacion[p] for p in self.padres)
 		return self.cpt[clave]
 
@@ -47,6 +51,7 @@ class RedBayesianaSimple:
 	def __init__(self, nodos: List[NodoBooleano]):
 		self.nodos = {n.nombre: n for n in nodos}
 		# Orden topológico simple (asumimos que el usuario provee en orden correcto)
+		# En producción convendría validar que no hay ciclos y calcular el orden topológico
 		self.orden = [n.nombre for n in nodos]
 	
 	def prob_conjunta(self, asignacion: Dict[str, bool]) -> float:
@@ -55,12 +60,14 @@ class RedBayesianaSimple:
 		P(X1,...,Xn) = ∏ P(Xi | padres(Xi))
 		"""
 		p = 1.0
+		# Recorremos en orden topológico para asegurar que los padres ya están en 'asignacion'
 		for nombre in self.orden:
 			nodo = self.nodos[nombre]
 			val = asignacion[nombre]
 			# P(nodo=True|padres)
 			pt = nodo.prob_dado_padres(asignacion)
-			# Multiplicar por pt si val=True, (1-pt) si val=False
+			# Multiplicamos por la prob. correspondiente al valor asignado
+			# Si la variable es True usamos pt, si es False usamos (1-pt)
 			p *= pt if val else (1.0 - pt)
 		return p
 	
@@ -70,16 +77,17 @@ class RedBayesianaSimple:
 		Retorna la suma de P(asignacion completa) sobre todas las extensiones.
 		"""
 		# Caso base: no quedan variables por asignar
+		# La asignación actual ya está completa para las variables consideradas
 		if not vars_restantes:
 			return self.prob_conjunta(asignacion)
 		
-		# Caso recursivo: elegir primera variable y sumar sobre sus valores
+		# Caso recursivo: elegir primera variable y sumar sobre sus dos valores booleanos
 		var = vars_restantes[0]
 		resto = vars_restantes[1:]
 		total = 0.0
 		
 		for valor in [True, False]:
-			# Extender la asignación con var=valor
+			# Extender la asignación con var=valor (sin mutar el dict original)
 			nueva_asig = {**asignacion, var: valor}
 			total += self.enumerar_todas(resto, nueva_asig)
 		
@@ -95,20 +103,21 @@ class RedBayesianaSimple:
 		"""
 		q_var, q_val = consulta
 		
-		# Identificar variables ocultas
+		# Identificar variables ocultas: todas menos evidencia y la variable de consulta
 		ocultas = [v for v in self.orden if v not in evidencia and v != q_var]
 		
 		# Numerador: P(Q=q_val, evidencia) = Σ_ocultas P(Q=q_val, evidencia, ocultas)
 		asig_num = {**evidencia, q_var: q_val}
 		numerador = self.enumerar_todas(ocultas, asig_num)
 		
-		# Denominador: P(evidencia) = P(Q=True, evidencia) + P(Q=False, evidencia)
+		# Denominador: P(evidencia) = Σ_{q'∈{True,False}} Σ_h P(Q=q',evidencia,h)
+		# Se calcula sumando los dos casos de Q
 		asig_den_true = {**evidencia, q_var: True}
 		asig_den_false = {**evidencia, q_var: False}
 		denominador = (self.enumerar_todas(ocultas, asig_den_true) +
 		               self.enumerar_todas(ocultas, asig_den_false))
 		
-		# Retornar probabilidad condicional
+		# Retornar probabilidad condicional (protegido ante denominador 0)
 		return (numerador / denominador) if denominador > 0 else 0.0
 
 
@@ -136,15 +145,15 @@ def modo_demo():
 	
 	# P(Alarm | Burglary, Earthquake)
 	A.establecer_cpt({
-		(True, True): 0.95,
-		(True, False): 0.94,
-		(False, True): 0.29,
-		(False, False): 0.001
+		(True, True): 0.95,   # Alta prob. de alarma si hay robo y terremoto
+		(True, False): 0.94,  # Alta prob. con robo pero sin terremoto
+		(False, True): 0.29,  # Prob. moderada con terremoto sin robo
+		(False, False): 0.001 # Casi imposible que suene sin causas
 	})
 	
 	# P(JohnCalls | Alarm), P(MaryCalls | Alarm)
-	J.establecer_cpt({(True,): 0.90, (False,): 0.05})
-	M.establecer_cpt({(True,): 0.70, (False,): 0.01})
+	J.establecer_cpt({(True,): 0.90, (False,): 0.05})   # Juan llama si suena la alarma
+	M.establecer_cpt({(True,): 0.70, (False,): 0.01})   # María llama con menor probabilidad
 	
 	# Crear red
 	red = RedBayesianaSimple([B, E, A, J, M])
@@ -198,6 +207,7 @@ def modo_interactivo():
 		j_obs = input("¿Juan llamó? (true/false): ").strip().lower()
 		m_obs = input("¿María llamó? (true/false): ").strip().lower()
 		
+		# Normalizamos varias formas de escribir booleanos en español/inglés
 		evidencia = {}
 		if j_obs in ['true', 't', 'yes', 'si', 's']:
 			evidencia['J'] = True
@@ -238,6 +248,7 @@ def main():
 	elif opcion == '2':
 		modo_interactivo()
 	else:
+		# Entrada no reconocida: por defecto ejecutamos la DEMO para ilustrar el método
 		modo_demo()
 	print("\n" + "="*70)
 	print("FIN DEL PROGRAMA")
