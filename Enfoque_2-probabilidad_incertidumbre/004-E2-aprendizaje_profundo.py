@@ -73,9 +73,9 @@ class RedNeuronalProfunda:
         """
         Inicializa la red neuronal profunda.
         
-        :param arquitectura: lista con el número de neuronas por capa [entrada, oculta1, ..., salida]
-        :param tasa_aprendizaje: tasa de aprendizaje para descenso de gradiente
-        :param regularizacion_l2: parámetro lambda para regularización L2
+        :parametro arquitectura: lista con el número de neuronas por capa [entrada, oculta1, ..., salida]
+        :parametro tasa_aprendizaje: tasa de aprendizaje para descenso de gradiente
+        :parametro regularizacion_l2: parámetro lambda para regularización L2
         """
         self.arquitectura = arquitectura
         self.num_capas = len(arquitectura)
@@ -103,8 +103,8 @@ class RedNeuronalProfunda:
         """
         Propagación hacia adelante a través de la red.
         
-        :param X: datos de entrada (n_muestras, n_caracteristicas)
-        :param funcion_activacion: 'relu', 'sigmoid', o 'tanh'
+        :parametro X: datos de entrada (n_muestras, n_caracteristicas)
+        :parametro funcion_activacion: 'relu', 'sigmoid', o 'tanh'
         :return: salida de la red
         """
         # Seleccionar función de activación
@@ -145,9 +145,9 @@ class RedNeuronalProfunda:
         """
         Algoritmo de retropropagación para calcular gradientes.
         
-        :param X: datos de entrada
-        :param Y: etiquetas verdaderas
-        :param funcion_activacion: función de activación usada
+        :parametro X: datos de entrada
+        :parametro Y: etiquetas verdaderas
+        :parametro funcion_activacion: función de activación usada
         :return: gradientes de pesos y sesgos
         """
         m = X.shape[0]  # Número de muestras
@@ -188,12 +188,12 @@ class RedNeuronalProfunda:
     def entrenar(self, X, Y, epocas=1000, verbose=True, funcion_activacion='relu'):
         """
         Entrena la red neuronal usando descenso de gradiente.
-        
-        :param X: datos de entrenamiento
-        :param Y: etiquetas
-        :param epocas: número de iteraciones de entrenamiento
-        :param verbose: mostrar progreso
-        :param funcion_activacion: función de activación a usar
+
+        :parametro X: datos de entrenamiento
+        :parametro Y: etiquetas
+        :parametro epocas: número de iteraciones de entrenamiento
+        :parametro verbose: mostrar progreso
+        :parametro funcion_activacion: función de activación a usar
         """
         historial_perdida = []
         
