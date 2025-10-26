@@ -28,9 +28,13 @@ class Factor:
 		"""
 		variables: lista de nombres de variables en orden
 		tabla: {tuple(valores): probabilidad/peso}
+		- El orden en 'variables' define el orden en las tuplas-clave de 'tabla'.
+		- Los valores en la tabla son típicamente probabilidades (0..1),
+		  pero durante la eliminación pueden ser productos no normalizados.
 		"""
 		self.variables = variables[:]
-		self.tabla = dict(tabla)  # Copiar para evitar efectos secundarios
+		# Copiamos para evitar efectos secundarios si se reutiliza el dict original
+		self.tabla = dict(tabla)
 	
 	def __repr__(self):
 		return f"Factor({self.variables}, {len(self.tabla)} entradas)"
@@ -40,10 +44,11 @@ class Factor:
 		Multiplica dos factores: f1(X,Y) * f2(Y,Z) = f3(X,Y,Z).
 		El producto combina las variables y multiplica los valores correspondientes.
 		"""
-		# Variables resultantes: unión de variables de ambos factores
+		# Variables resultantes: unión manteniendo el orden relativo (estilo join)
 		vars_resultado = list(dict.fromkeys(self.variables + otro.variables))
 		
 		# Índices de cada variable en los factores originales
+		# Si una variable no está en un factor, su índice queda en None (no se usa)
 		idx_self = {v: self.variables.index(v) if v in self.variables else None 
 		            for v in vars_resultado}
 		idx_otro = {v: otro.variables.index(v) if v in otro.variables else None 
@@ -54,13 +59,15 @@ class Factor:
 		
 		# Generar todas las asignaciones posibles para las variables resultado
 		for asignacion in product([True, False], repeat=len(vars_resultado)):
-			# Construir claves para cada factor original
+			# Construir claves para cada factor original respetando su orden interno
 			clave_self = tuple(asignacion[idx_self[v]] 
 			                   for v in self.variables) if idx_self else ()
 			clave_otro = tuple(asignacion[idx_otro[v]] 
 			                   for v in otro.variables) if idx_otro else ()
 			
-			# Multiplicar valores si ambas claves existen
+			# Multiplicar valores si ambas claves existen en las tablas
+			# Nota: si alguna combinación no aparece en un factor (modelo esparso),
+			# simplemente se omite (equivale a valor 0).
 			if clave_self in self.tabla and clave_otro in otro.tabla:
 				nueva_tabla[asignacion] = self.tabla[clave_self] * otro.tabla[clave_otro]
 		
@@ -73,6 +80,7 @@ class Factor:
 		"""
 		if var not in self.variables:
 			# Si la variable no está en el factor, retornar una copia
+			# Esto permite componer operaciones sin chequear pertenencia externamente
 			return Factor(self.variables, self.tabla)
 		
 		# Variables resultantes: todas menos la que se marginaliza
@@ -83,10 +91,10 @@ class Factor:
 		nueva_tabla = {}
 		
 		for clave, valor in self.tabla.items():
-			# Construir clave sin la variable a marginalizar
+			# Construir clave sin la variable a marginalizar (eliminando idx_var)
 			nueva_clave = tuple(clave[i] for i in range(len(clave)) if i != idx_var)
 			
-			# Acumular suma
+			# Acumular suma para las dos asignaciones posibles de 'var'
 			if nueva_clave in nueva_tabla:
 				nueva_tabla[nueva_clave] += valor
 			else:
@@ -123,21 +131,21 @@ def eliminacion_de_variables(factores: List[Factor], orden_eliminacion: List[str
 		print(f"\nEliminando variable '{var}':")
 		print(f"  Factores a multiplicar: {len(factores_con_var)}")
 		
-		# Multiplicar todos los factores que contienen var
+		# Multiplicar todos los factores que contienen var (asociatividad del producto)
 		producto = factores_con_var[0]
 		for f in factores_con_var[1:]:
 			producto = producto.multiplicar(f)
 		
 		print(f"  Producto resultante: {producto}")
 		
-		# Sumar (marginalizar) var del producto
+		# Sumar (marginalizar) var del producto → elimina la variable del grafo de factores
 		marginalizado = producto.sumar_variable(var)
 		print(f"  Después de marginalizar '{var}': {marginalizado}")
 		
-		# Actualizar lista de factores
+		# Actualizar lista de factores: reemplazar los usados por el nuevo factor reducido
 		factores_actuales = factores_sin_var + [marginalizado]
 	
-	# Multiplicar todos los factores restantes
+	# Multiplicar todos los factores restantes (contienen solo variables de consulta/evidencia)
 	print(f"\n>>> Multiplicando {len(factores_actuales)} factores restantes...")
 	resultado = factores_actuales[0]
 	for f in factores_actuales[1:]:
@@ -159,13 +167,13 @@ def modo_demo():
 	print("Consulta: P(B | C=true)")
 	print("Factores iniciales: P(A), P(B|A), P(C|A)")
 	
-	# Factor P(A)
+	# Factor P(A) (prior de A)
 	f_A = Factor(['A'], {
 		(True,): 0.6,
 		(False,): 0.4
 	})
 	
-	# Factor P(B|A)
+	# Factor P(B|A) (CPT de B)
 	f_B_dado_A = Factor(['A', 'B'], {
 		(True, True): 0.7,
 		(True, False): 0.3,
@@ -173,7 +181,7 @@ def modo_demo():
 		(False, False): 0.8
 	})
 	
-	# Factor P(C|A)
+	# Factor P(C|A) (CPT de C) — se reducirá con la evidencia C=true
 	f_C_dado_A = Factor(['A', 'C'], {
 		(True, True): 0.8,
 		(True, False): 0.2,
@@ -181,7 +189,8 @@ def modo_demo():
 		(False, False): 0.9
 	})
 	
-	# Evidencia: C=true → reducir factor de C
+	# Evidencia: C=true → reducir factor de C eliminando la variable C
+	# Queda un factor solo sobre A con los términos P(C=true|A)
 	f_C_true = Factor(['A'], {
 		(True,): 0.8,   # P(C=true|A=true)
 		(False,): 0.1   # P(C=true|A=false)
@@ -218,7 +227,7 @@ def modo_interactivo():
 		c_valor = True
 		print("Usando C=true por defecto")
 	
-	# Factores predefinidos
+	# Factores predefinidos (reutilizamos los del demo)
 	f_A = Factor(['A'], {(True,): 0.6, (False,): 0.4})
 	f_B_dado_A = Factor(['A', 'B'], {
 		(True, True): 0.7, (True, False): 0.3,
