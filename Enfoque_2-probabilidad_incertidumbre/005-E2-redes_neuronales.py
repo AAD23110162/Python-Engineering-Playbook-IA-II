@@ -1,6 +1,6 @@
 """
 005-E2-redes_neuronales.py
---------------------------------
+-------------------------------
 Este script implementa Redes Neuronales Artificiales básicas (perceptrón multicapa):
 - Construye redes neuronales con capas de entrada, ocultas y de salida
 - Implementa la propagación hacia adelante (forward propagation)
