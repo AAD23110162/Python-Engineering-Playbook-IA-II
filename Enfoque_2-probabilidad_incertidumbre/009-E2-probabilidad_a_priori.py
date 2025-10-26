@@ -29,9 +29,9 @@ class DistribucionAPriori:
         """
         Inicializa una distribución a priori.
         
-        :param nombre: nombre de la distribución
-        :param valores: lista de valores posibles
-        :param probabilidades: probabilidad de cada valor
+        :parametro nombre: nombre de la distribución
+        :parametro valores: lista de valores posibles
+        :parametro probabilidades: probabilidad de cada valor
         """
         # Validación básica: la distribución debe estar normalizada
         assert abs(sum(probabilidades) - 1.0) < 0.001, "Las probabilidades deben sumar 1"
@@ -60,7 +60,7 @@ def crear_distribucion_uniforme(valores):
     Crea una distribución a priori uniforme (principio de indiferencia).
     Asigna la misma probabilidad a todos los valores cuando no hay información previa.
     
-    :param valores: lista de valores posibles
+    :parametro valores: lista de valores posibles
     :return: DistribucionAPriori
     """
     n = len(valores)
@@ -72,8 +72,8 @@ def crear_distribucion_informativa(valores, pesos):
     """
     Crea una distribución a priori informativa basada en conocimiento previo.
     
-    :param valores: lista de valores posibles
-    :param pesos: pesos relativos (se normalizarán)
+    :parametro valores: lista de valores posibles
+    :parametro pesos: pesos relativos (se normalizarán)
     :return: DistribucionAPriori
     """
     total = sum(pesos)
@@ -87,10 +87,10 @@ def actualizacion_bayesiana(prior, evidencia, verosimilitud):
     """
     Actualiza probabilidades usando el teorema de Bayes.
     P(H|E) = P(E|H) × P(H) / P(E)
-    
-    :param prior: DistribucionAPriori
-    :param evidencia: evidencia observada
-    :param verosimilitud: dict {valor: P(evidencia|valor)}
+
+    :parametro prior: DistribucionAPriori
+    :parametro evidencia: evidencia observada
+    :parametro verosimilitud: dict {valor: P(evidencia|valor)}
     :return: DistribucionAPriori posterior
     """
     # Calcular la constante de normalización (evidencia):
