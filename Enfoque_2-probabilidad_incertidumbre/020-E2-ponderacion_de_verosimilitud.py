@@ -1,6 +1,6 @@
 """
 020-E2-ponderacion_de_verosimilitud.py
---------------------------------
+---------------------------------------
 Este script implementa Ponderación de Verosimilitud (Likelihood Weighting) para inferencia aproximada:
 - Genera muestras fijando la evidencia y ponderándolas por su verosimilitud.
 - Reduce el problema del rechazo cuando la evidencia es poco probable.
@@ -25,10 +25,13 @@ class NodoPonderado:
 	def __init__(self, nombre: str, padres: List[str]):
 		self.nombre = nombre
 		self.padres = padres[:]
+		# CPT: {tuple(valores_padres_bool): P(X=True|padres)}
+		# Para nodos raíz, usamos la clave vacía () → P(X=True)
 		self.cpt: Dict[tuple, float] = {}
 	
 	def establecer_cpt(self, cpt: Dict[tuple, float]):
 		"""Establece la CPT del nodo."""
+		# Normalizamos claves a tuplas en caso de que vengan como listas
 		self.cpt = {tuple(k): v for k, v in cpt.items()}
 	
 	def muestrear(self, asignacion_padres: Dict[str, bool]) -> bool:
@@ -36,9 +39,11 @@ class NodoPonderado:
 		if not self.padres:
 			p_true = self.cpt[()]
 		else:
+			# Construimos la clave en el mismo orden de 'padres'
 			clave = tuple(asignacion_padres[p] for p in self.padres)
 			p_true = self.cpt[clave]
 		
+		# Ensayo Bernoulli: True con probabilidad p_true
 		return random.random() < p_true
 	
 	def prob_dado_padres(self, valor: bool, asignacion_padres: Dict[str, bool]) -> float:
@@ -46,9 +51,11 @@ class NodoPonderado:
 		if not self.padres:
 			p_true = self.cpt[()]
 		else:
+			# Notar que solo miramos padres; asignacion_padres puede incluir más variables
 			clave = tuple(asignacion_padres[p] for p in self.padres)
 			p_true = self.cpt[clave]
 		
+		# Si se pide P(X=False|padres), devolvemos el complemento
 		return p_true if valor else (1.0 - p_true)
 
 
@@ -57,6 +64,7 @@ class RedBayesianaPonderada:
 	
 	def __init__(self, nodos: List[NodoPonderado]):
 		self.nodos = {n.nombre: n for n in nodos}
+		# Asumimos que los nodos se entregan en orden topológico (padres antes que hijos)
 		self.orden = [n.nombre for n in nodos]
 	
 	def ponderacion_verosimilitud(self, evidencia: Dict[str, bool], num_muestras: int) -> List[Tuple[Dict[str, bool], float]]:
@@ -83,6 +91,7 @@ class RedBayesianaPonderada:
 					muestra[nombre] = valor_observado
 					
 					# Peso *= P(valor_observado | padres)
+					# Importante: los padres ya han sido asignados por el orden topológico
 					prob = nodo.prob_dado_padres(valor_observado, muestra)
 					peso *= prob
 				else:
@@ -115,6 +124,7 @@ class RedBayesianaPonderada:
 		if suma_pesos_totales == 0:
 			return 0.0
 		
+		# Normalizamos por la suma total de pesos: estimador insesgado para consultas sobre evidencia fija
 		return suma_pesos_coincidentes / suma_pesos_totales
 
 
@@ -145,7 +155,7 @@ def modo_demo():
 	print(f"\n>>> Generando {num_muestras} muestras ponderadas con evidencia {evidencia}")
 	muestras = red.ponderacion_verosimilitud(evidencia, num_muestras)
 	
-	# Estadísticas de pesos
+	# Estadísticas de pesos: útil para diagnosticar degeneración (pesos muy pequeños)
 	pesos = [peso for _, peso in muestras]
 	peso_promedio = sum(pesos) / len(pesos)
 	print(f"Peso promedio de muestras: {peso_promedio:.4f}")
@@ -198,6 +208,7 @@ def modo_interactivo():
 	
 	try:
 		c_obs = input("\nValor observado de C (true/false): ").strip().lower()
+		# Interpretamos 't', 'true', 'si', 's' como True
 		c_valor = c_obs.startswith('t')
 		num = int(input("Número de muestras: ").strip() or "10000")
 	except:
@@ -210,7 +221,7 @@ def modo_interactivo():
 	
 	muestras = red.ponderacion_verosimilitud(evidencia, num)
 	
-	# Estadísticas
+	# Estadísticas: media, mínimo y máximo de pesos para evaluar dispersión
 	pesos = [peso for _, peso in muestras]
 	peso_promedio = sum(pesos) / len(pesos)
 	peso_min = min(pesos)
@@ -244,6 +255,7 @@ def main():
 	elif opcion == '2':
 		modo_interactivo()
 	else:
+		# Opción no reconocida → ejecutamos DEMO por defecto
 		modo_demo()
 	print("\n" + "="*70)
 	print("FIN DEL PROGRAMA")
