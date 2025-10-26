@@ -1,6 +1,6 @@
 """
 006-E2-tratamiento_probabilistico_lenguaje.py
---------------------------------
+----------------------------------------------
 Este script implementa Tratamiento Probabilístico del Lenguaje Natural:
 - Construye modelos de lenguaje basados en n-gramas (unigramas, bigramas, trigramas)
 - Calcula probabilidades de secuencias de palabras usando el modelo de Markov
