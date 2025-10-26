@@ -1,6 +1,6 @@
 """
 021-E2-monte_carlo_para_cadenas_de_markov.py
---------------------------------
+---------------------------------------------
 Este script presenta métodos de Monte Carlo para Cadenas de Markov (MCMC):
 - Introduce cadenas de Markov ergódicas y su distribución estacionaria.
 - Implementa conceptualmente Metropolis-Hastings y Gibbs Sampling.
@@ -33,6 +33,8 @@ class MetropolisHastings:
 		"""
 		densidad_no_normalizada: función π(x) proporcional a la densidad objetivo
 		propuesta_std: desviación estándar de la distribución de propuesta (Gaussiana)
+		Nota: en MH basta con conocer π(x) hasta una constante de normalización; no
+		se requiere que esté normalizada siempre que el cociente π(x')/π(x) sea válido.
 		"""
 		self.densidad = densidad_no_normalizada
 		self.propuesta_std = propuesta_std
@@ -48,29 +50,32 @@ class MetropolisHastings:
 		   - Calcular ratio α = π(x') / π(x_actual)
 		   - Aceptar x' con probabilidad min(1, α)
 		   - Si se acepta, x_siguiente = x'; sino x_siguiente = x_actual
+		Retorna:
+		- cadena: lista con los estados visitados (incluye burn-in si luego no se descarta)
+		- tasa_aceptacion: fracción de propuestas aceptadas (diagnóstico de mezcla)
 		"""
 		cadena = []
 		x_actual = x_inicial
 		aceptaciones = 0
 		
 		for i in range(num_iteraciones):
-			# Registrar estado actual
+			# Registrar estado actual (útil para estadísticos post burn-in)
 			cadena.append(x_actual)
 			
 			# Proponer nuevo estado: x' = x_actual + N(0, propuesta_std)
 			x_propuesto = x_actual + random.gauss(0, self.propuesta_std)
 			
-			# Calcular densidades
+			# Calcular densidades no normalizadas en actual y propuesto
 			densidad_actual = self.densidad(x_actual)
 			densidad_propuesta = self.densidad(x_propuesto)
 			
-			# Calcular ratio de aceptación
+			# Calcular ratio de aceptación (propuesta simétrica → términos de propuesta se cancelan)
 			if densidad_actual > 0:
 				alpha = min(1.0, densidad_propuesta / densidad_actual)
 			else:
-				alpha = 1.0  # Aceptar si estamos en un punto de densidad 0
+				alpha = 1.0  # Si π(x_actual)=0, aceptar propuesta por construcción
 			
-			# Aceptar o rechazar
+			# Aceptar o rechazar según α
 			if random.random() < alpha:
 				x_actual = x_propuesto
 				aceptaciones += 1
@@ -92,6 +97,8 @@ class GibbsSampling:
 		variables: lista de nombres de variables
 		condicionales: {var: función_muestra_condicional}
 		  donde función_muestra_condicional(estado_actual) → nuevo valor para var
+		Las funciones condicionales encapsulan P(var | resto) y devuelven una muestra
+		convenientemente. Gibbs acepta siempre (propuesta = distribución condicional exacta).
 		"""
 		self.variables = variables
 		self.condicionales = condicionales
@@ -103,15 +110,16 @@ class GibbsSampling:
 		En cada iteración:
 		- Para cada variable, muestrear de P(var | todas las demás)
 		- Actualizar el estado con el nuevo valor
+		Nota: el orden de actualización puede afectar la mezcla; aquí usamos un orden fijo.
 		"""
 		cadena = []
 		estado = dict(estado_inicial)
 		
 		for i in range(num_iteraciones):
-			# Registrar estado actual
+			# Registrar estado actual (antes de las actualizaciones de esta iteración)
 			cadena.append(dict(estado))
 			
-			# Actualizar cada variable en secuencia
+			# Actualizar cada variable en secuencia usando sus condicionales
 			for var in self.variables:
 				# Muestrear var condicionado al estado actual de las demás
 				nuevo_valor = self.condicionales[var](estado)
@@ -127,7 +135,7 @@ def densidad_bimodal(x: float) -> float:
 	Distribución bimodal: mezcla de dos gaussianas.
 	π(x) ∝ 0.3·N(-2,1) + 0.7·N(3,1.5)
 	"""
-	# Componente 1: N(-2, 1)
+	# Componente 1: N(-2, 1) — omitimos constantes de normalización (π puede ser no normalizada)
 	c1 = 0.3 * math.exp(-0.5 * ((x + 2) ** 2))
 	
 	# Componente 2: N(3, 1.5²)
@@ -270,6 +278,7 @@ def main():
 	elif opcion == '2':
 		modo_interactivo()
 	else:
+		# Opción no reconocida → ejecutamos DEMO por defecto
 		modo_demo()
 	print("\n" + "="*70)
 	print("FIN DEL PROGRAMA")
