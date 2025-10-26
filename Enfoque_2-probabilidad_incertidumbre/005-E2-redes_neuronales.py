@@ -56,11 +56,11 @@ class RedNeuronal:
     def __init__(self, neuronas_entrada, neuronas_ocultas, neuronas_salida, tasa_aprendizaje=0.5):
         """
         Inicializa la arquitectura de la red neuronal.
-        
-        :param neuronas_entrada: número de neuronas en la capa de entrada
-        :param neuronas_ocultas: número de neuronas en la capa oculta
-        :param neuronas_salida: número de neuronas en la capa de salida
-        :param tasa_aprendizaje: velocidad de ajuste de los pesos (learning rate)
+
+        :parametro neuronas_entrada: número de neuronas en la capa de entrada
+        :parametro neuronas_ocultas: número de neuronas en la capa oculta
+        :parametro neuronas_salida: número de neuronas en la capa de salida
+        :parametro tasa_aprendizaje: velocidad de ajuste de los pesos (learning rate)
         """
         self.neuronas_entrada = neuronas_entrada
         self.neuronas_ocultas = neuronas_ocultas
@@ -87,8 +87,8 @@ class RedNeuronal:
     def propagacion_adelante(self, X):
         """
         Propagación hacia adelante: calcula la salida de la red para una entrada dada.
-        
-        :param X: datos de entrada (puede ser un vector o matriz de muestras)
+
+        :parametro X: datos de entrada (puede ser un vector o matriz de muestras)
         :return: salida de la red neuronal
         """
         # ========== CAPA DE ENTRADA → CAPA OCULTA ==========
@@ -113,9 +113,9 @@ class RedNeuronal:
     def retropropagacion(self, X, Y):
         """
         Retropropagación del error: ajusta los pesos para minimizar el error.
-        
-        :param X: datos de entrada
-        :param Y: etiquetas verdaderas (valores esperados)
+
+        :parametro X: datos de entrada
+        :parametro Y: etiquetas verdaderas (valores esperados)
         """
         m = X.shape[0]  # Número de muestras
         
@@ -155,10 +155,10 @@ class RedNeuronal:
         """
         Entrena la red neuronal usando el algoritmo de retropropagación.
         
-        :param X: datos de entrenamiento
-        :param Y: etiquetas de entrenamiento
-        :param epocas: número de iteraciones de entrenamiento
-        :param verbose: si True, muestra el progreso del entrenamiento
+        :parametro X: datos de entrenamiento
+        :parametro Y: etiquetas de entrenamiento
+        :parametro epocas: número de iteraciones de entrenamiento
+        :parametro verbose: si True, muestra el progreso del entrenamiento
         """
         historial_error = []
         
@@ -182,9 +182,9 @@ class RedNeuronal:
     def predecir(self, X, umbral=0.5):
         """
         Realiza predicciones sobre nuevos datos.
-        
-        :param X: datos de entrada
-        :param umbral: umbral de decisión para clasificación binaria
+
+        :parametro X: datos de entrada
+        :parametro umbral: umbral de decisión para clasificación binaria
         :return: predicciones binarias (0 o 1)
         """
         # Obtener salida de la red
@@ -197,8 +197,8 @@ class RedNeuronal:
         """
         Calcula la precisión de las predicciones.
         
-        :param X: datos de prueba
-        :param Y: etiquetas verdaderas
+        :parametro X: datos de prueba
+        :parametro Y: etiquetas verdaderas
         :return: porcentaje de precisión
         """
         predicciones = self.predecir(X)
@@ -228,10 +228,10 @@ def mostrar_tabla_verdad(X, Y, predicciones, nombre_operacion):
     """
     Muestra una tabla de verdad comparando predicciones con valores reales.
     
-    :param X: entradas
-    :param Y: salidas esperadas
-    :param predicciones: salidas predichas por la red
-    :param nombre_operacion: nombre de la operación lógica
+    :parametro X: entradas
+    :parametro Y: salidas esperadas
+    :parametro predicciones: salidas predichas por la red
+    :parametro nombre_operacion: nombre de la operación lógica
     """
     print(f"\n--- Tabla de Verdad: {nombre_operacion} ---")
     print("X1  X2  | Esperado | Predicho | ¿Correcto?")
