@@ -32,9 +32,9 @@ class TablaProbabilidadConjunta:
         """
         Inicializa la tabla de probabilidad conjunta.
         
-        :param variables: lista de nombres de variables ['X', 'Y']
-        :param valores: dict {variable: lista_de_valores}
-        :param probabilidades: dict {(val_x, val_y): probabilidad}
+        :parametro variables: lista de nombres de variables ['X', 'Y']
+        :parametro valores: dict {variable: lista_de_valores}
+        :parametro probabilidades: dict {(val_x, val_y): probabilidad}
         """
         self.variables = variables
         self.valores = valores
@@ -58,8 +58,8 @@ class TablaProbabilidadConjunta:
     def prob_conjunta(self, asignacion):
         """
         Obtiene P(asignacion) de la tabla.
-        
-        :param asignacion: tupla de valores (val_x, val_y, ...)
+
+        :parametro asignacion: tupla de valores (val_x, val_y, ...)
         :return: probabilidad conjunta
         """
         return self.probabilidades.get(tuple(asignacion), 0.0)
@@ -68,8 +68,8 @@ class TablaProbabilidadConjunta:
         """
         Calcula probabilidad marginal P(variable=valor) sumando sobre otras variables.
         
-        :param variable: nombre de la variable
-        :param valor: valor de la variable
+        :parametro variable: nombre de la variable
+        :parametro valor: valor de la variable
         :return: probabilidad marginal
         """
         # Encontrar índice de la variable
@@ -88,9 +88,9 @@ class TablaProbabilidadConjunta:
         """
         Calcula P(variable_consulta=valor_consulta | evidencia).
         
-        :param variable_consulta: variable a consultar
-        :param valor_consulta: valor deseado
-        :param evidencia: dict {variable: valor} con las variables observadas
+        :parametro variable_consulta: variable a consultar
+        :parametro valor_consulta: valor deseado
+        :parametro evidencia: dict {variable: valor} con las variables observadas
         :return: probabilidad condicionada
         """
         # Encontrar índice de la variable de consulta
@@ -146,11 +146,11 @@ class TablaProbabilidadCondicional:
     def __init__(self, variable, padres, valores_variable, valores_padres):
         """
         Inicializa una CPT.
-        
-        :param variable: nombre de la variable
-        :param padres: lista de nombres de variables padre
-        :param valores_variable: posibles valores de la variable
-        :param valores_padres: dict {padre: lista_de_valores}
+
+        :parametro variable: nombre de la variable
+        :parametro padres: lista de nombres de variables padre
+        :parametro valores_variable: posibles valores de la variable
+        :parametro valores_padres: dict {padre: lista_de_valores}
         """
         self.variable = variable
         self.padres = padres
@@ -163,9 +163,9 @@ class TablaProbabilidadCondicional:
     def establecer_probabilidades(self, asignacion_padres, probabilidades):
         """
         Establece probabilidades P(variable | asignacion_padres).
-        
-        :param asignacion_padres: tupla de valores de padres
-        :param probabilidades: dict {valor_variable: probabilidad}
+
+        :parametro asignacion_padres: tupla de valores de padres
+        :parametro probabilidades: dict {valor_variable: probabilidad}
         """
         # Normalizar
         suma = sum(probabilidades.values())
@@ -178,9 +178,9 @@ class TablaProbabilidadCondicional:
     def obtener_probabilidad(self, valor_variable, asignacion_padres):
         """
         Obtiene P(variable=valor_variable | padres=asignacion_padres).
-        
-        :param valor_variable: valor de la variable
-        :param asignacion_padres: tupla de valores de padres
+
+        :parametro valor_variable: valor de la variable
+        :parametro asignacion_padres: tupla de valores de padres
         :return: probabilidad
         """
         if tuple(asignacion_padres) in self.tabla:
