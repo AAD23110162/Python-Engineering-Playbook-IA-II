@@ -53,7 +53,7 @@ class ModeloNGramas:
         """
         Convierte texto en lista de palabras (tokens).
         
-        :param texto: cadena de texto
+        :parametro texto: cadena de texto
         :return: lista de palabras en minúsculas
         """
         # Limpieza básica: convertir a minúsculas y separar por espacios
@@ -62,8 +62,8 @@ class ModeloNGramas:
     def entrenar(self, corpus):
         """
         Entrena el modelo de n-gramas con un corpus de texto.
-        
-        :param corpus: lista de frases (strings) o un solo string
+
+        :parametro corpus: lista de frases (strings) o un solo string
         """
         # Si corpus es un solo string, convertir a lista
         if isinstance(corpus, str):
@@ -95,9 +95,9 @@ class ModeloNGramas:
     def probabilidad(self, palabra, contexto):
         """
         Calcula P(palabra | contexto) usando suavizado Laplace.
-        
-        :param palabra: palabra cuya probabilidad queremos calcular
-        :param contexto: tupla de palabras previas (longitud n-1)
+
+        :parametro palabra: palabra cuya probabilidad queremos calcular
+        :parametro contexto: tupla de palabras previas (longitud n-1)
         :return: probabilidad condicional
         """
         # Asegurar que contexto es una tupla
@@ -123,8 +123,8 @@ class ModeloNGramas:
         """
         Calcula la probabilidad de una secuencia completa de palabras.
         Usa la regla de la cadena: P(w1, w2, ..., wn) = ∏ P(wi | w1...wi-1)
-        
-        :param secuencia: lista de palabras o string
+
+        :parametro secuencia: lista de palabras o string
         :return: probabilidad de la secuencia
         """
         # Tokenizar si es necesario
@@ -152,9 +152,9 @@ class ModeloNGramas:
     def generar_texto(self, longitud=10, contexto_inicial=None):
         """
         Genera texto aleatorio usando las probabilidades del modelo.
-        
-        :param longitud: número de palabras a generar
-        :param contexto_inicial: palabras iniciales (opcional)
+
+        :parametro longitud: número de palabras a generar
+        :parametro contexto_inicial: palabras iniciales (opcional)
         :return: texto generado
         """
         # Inicializar contexto
@@ -208,7 +208,7 @@ class ModeloNGramas:
         Encuentra la palabra más probable dado un contexto.
         Útil para autocompletado y corrección.
         
-        :param contexto: tupla o lista de palabras previas
+        :parametro contexto: tupla o lista de palabras previas
         :return: palabra más probable y su probabilidad
         """
         # Asegurar formato de tupla
