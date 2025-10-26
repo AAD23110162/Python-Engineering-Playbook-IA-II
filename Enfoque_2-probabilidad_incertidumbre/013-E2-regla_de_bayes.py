@@ -28,10 +28,17 @@ def bayes_posterior(prior: dict, likelihood: dict) -> dict:
 	- likelihood: {H: P(E|H)} para la misma familia de H
 	Retorna un dict normalizado {H: P(H|E)}.
 	"""
+	# Paso 1: Calcular numerador P(E|H)·P(H) para cada hipótesis H
 	numeradores = {h: prior.get(h, 0.0) * likelihood.get(h, 0.0) for h in prior}
+	
+	# Paso 2: Calcular constante de normalización Z = sum_H P(E|H)·P(H) = P(E)
 	Z = sum(numeradores.values())
+	
+	# Paso 3: Si P(E)=0, todas las hipótesis tienen posterior 0
 	if Z == 0:
 		return {h: 0.0 for h in prior}
+	
+	# Paso 4: Normalizar para obtener P(H|E) = P(E|H)·P(H) / P(E)
 	return {h: v / Z for h, v in numeradores.items()}
 
 
@@ -51,17 +58,28 @@ def naive_bayes_binario(doc: list[str], vocab: set[str], modelo: dict) -> dict:
 	  }
 	Retorna posteriors por clase.
 	"""
+	# Convertir documento a conjunto de palabras presentes (minúsculas)
 	present = set(w.lower() for w in doc)
+	
+	# Inicializar log-probabilidades con el log del prior de cada clase
+	# Usamos log para evitar underflow con productos de muchas probabilidades pequeñas
 	log_prob = {c: np.log(modelo['prior'][c]) for c in modelo['prior']}
+	
+	# Para cada clase, multiplicar (sumar en log) las verosimilitudes de cada palabra
 	for c in modelo['likelihood']:
 		for w in vocab:
+			# P(palabra presente | clase) y P(palabra ausente | clase)
 			pw1 = modelo['likelihood'][c].get(w, 0.5)  # smoothing implícito si falta
 			pw0 = 1 - pw1
+			
+			# Si la palabra está presente, usamos P(w=1|c), sino P(w=0|c)
 			if w in present:
-				log_prob[c] += np.log(max(pw1, 1e-12))
+				log_prob[c] += np.log(max(pw1, 1e-12))  # max evita log(0)
 			else:
 				log_prob[c] += np.log(max(pw0, 1e-12))
-	# Normalizar logs → probabilidades
+	
+	# Normalizar de log-probabilidades a probabilidades
+	# Restamos el máximo para estabilidad numérica (trick log-sum-exp)
 	m = max(log_prob.values())
 	exps = {c: np.exp(log_prob[c] - m) for c in log_prob}
 	Z = sum(exps.values())
@@ -77,28 +95,38 @@ def modo_demo():
 
 	# Ejemplo 1: Diagnóstico médico (test, sensibilidad, especificidad)
 	print("\n--- Diagnóstico Médico ---")
-	prevalencia = 0.01  # P(Enfermedad)
-	sensibilidad = 0.95 # P(+|Enfermedad)
-	especificidad = 0.98 # P(-|Sano)
+	# Definimos parámetros del problema
+	prevalencia = 0.01  # P(Enfermedad) - prior: 1% de la población tiene la enfermedad
+	sensibilidad = 0.95 # P(+|Enfermedad) - verosimilitud de test positivo si enfermo
+	especificidad = 0.98 # P(-|Sano) - probabilidad de test negativo si sano
+	
+	# Construimos prior y likelihood para test positivo
 	prior = {'Enfermedad': prevalencia, 'Sano': 1 - prevalencia}
-	like_pos = {'Enfermedad': sensibilidad, 'Sano': 1 - especificidad}
+	like_pos = {'Enfermedad': sensibilidad, 'Sano': 1 - especificidad}  # P(+|Sano) = falso positivo
+	
+	# Aplicamos Bayes: P(Enfermedad|+) = P(+|Enfermedad)·P(Enfermedad) / P(+)
 	posterior_pos = bayes_posterior(prior, like_pos)
 	print(f"P(Enfermedad | Test=+) = {posterior_pos['Enfermedad']:.4f}")
 
 	# Ejemplo 2: Naive Bayes (spam vs ham)
 	print("\n--- Naive Bayes (Spam/Ham) ---")
+	# Definimos vocabulario y modelo preentrenado (simulado)
 	vocab = {"oferta", "gratis", "hola", "reunión"}
 	modelo = {
-		'prior': {'spam': 0.3, 'ham': 0.7},
+		'prior': {'spam': 0.3, 'ham': 0.7},  # P(spam), P(ham) - distribución a priori
 		'likelihood': {
+			# P(palabra presente | clase) - verosimilitud para cada palabra
 			'spam': {"oferta": 0.8, "gratis": 0.7, "hola": 0.2, "reunión": 0.1},
 			'ham' : {"oferta": 0.1, "gratis": 0.1, "hola": 0.6, "reunión": 0.7}
 		}
 	}
+	
+	# Clasificamos un documento nuevo
 	doc = ["Hola", "tienes", "una", "oferta", "gratis"]
 	post = naive_bayes_binario(doc, vocab, modelo)
 	print(f"Documento: {' '.join(doc)}")
 	print(f"P(spam|doc)={post['spam']:.3f}, P(ham|doc)={post['ham']:.3f}")
+	# Esperamos P(spam|doc) alto porque contiene "oferta" y "gratis"
 
 
 # ========== MODO INTERACTIVO ==========
@@ -114,11 +142,20 @@ def modo_interactivo():
 		esp  = float(input("Especificidad P(-|Sano) (ej 0.98): ").strip() or "0.98")
 	except:
 		prev, sens, esp = 0.01, 0.95, 0.98
+	
+	# Configuramos prior (prevalencia)
 	prior = {'Enfermedad': prev, 'Sano': 1 - prev}
+	
+	# Likelihood para resultado positivo: P(+|Enfermedad) y P(+|Sano)
 	like_pos = {'Enfermedad': sens, 'Sano': 1 - esp}
+	
+	# Likelihood para resultado negativo: P(-|Enfermedad) y P(-|Sano)
 	like_neg = {'Enfermedad': 1 - sens, 'Sano': esp}
+	
+	# Calculamos posteriors para ambos resultados del test
 	post_pos = bayes_posterior(prior, like_pos)
 	post_neg = bayes_posterior(prior, like_neg)
+	
 	print(f"\nP(Enfermedad|+)={post_pos['Enfermedad']:.4f},  P(Enfermedad|-)={post_neg['Enfermedad']:.4f}")
 
 
