@@ -23,13 +23,17 @@ from itertools import product
 # - variables: lista de nombres ["A","B","C", ...]
 # - valores: dict {var: [posibles_valores]}
 # - tabla: dict { (vA, vB, vC, ...): prob }
+# Nota: Usamos tablas explícitas de la conjunta para mantener claridad.
+# Para tamaño grande de variables, métodos con factores/diagramas serían más eficientes.
 
 
 def marginal(variables, tabla, var, val):
 	"""P(var=val) sumando sobre el resto de variables."""
+	# Buscamos el índice de la variable objetivo en la tupla de asignaciones
 	idx = variables.index(var)
 	total = 0.0
 	for asign, p in tabla.items():
+		# Sumamos la probabilidad de todas las filas donde var toma el valor solicitado
 		if asign[idx] == val:
 			total += p
 	return total
@@ -37,26 +41,30 @@ def marginal(variables, tabla, var, val):
 
 def condicionada(variables, tabla, var, val, evidencia: dict):
 	"""P(var=val | evidencia) = P(var=val, evidencia) / P(evidencia)."""
+	# Calculamos numerador y denominador filtrando filas consistentes con la evidencia
 	idx_q = variables.index(var)
 	num = 0.0
 	den = 0.0
 	for asign, p in tabla.items():
+		# 'consistente' si todas las variables de la evidencia coinciden con la asignación
 		consistente = all(asign[variables.index(ev)] == evid for ev, evid in evidencia.items())
 		if consistente:
 			den += p
 			if asign[idx_q] == val:
 				num += p
+	# Si P(evidencia)=0 devolvemos 0.0 por seguridad numérica
 	return (num / den) if den > 0 else 0.0
 
 
 def independencia(variables, tabla, A, a_val, B, b_val, tol=1e-6):
 	"""Comprueba si A y B son independientes para valores concretos: P(A,B)=P(A)P(B)."""
-	# P(A=a, B=b)
+	# P(A=a, B=b): sumamos filas donde A=a y B=b
 	idxA = variables.index(A)
 	idxB = variables.index(B)
 	conj = sum(p for asign, p in tabla.items() if asign[idxA] == a_val and asign[idxB] == b_val)
 	pA = marginal(variables, tabla, A, a_val)
 	pB = marginal(variables, tabla, B, b_val)
+	# Comparamos con una tolerancia para evitar falsos negativos por redondeo
 	return abs(conj - pA * pB) < tol, conj, pA * pB
 
 
@@ -66,14 +74,15 @@ def independencia_condicional(variables, tabla, A, a_val, B, b_val, C, c_val, to
 	idxA = variables.index(A)
 	idxB = variables.index(B)
 	idxC = variables.index(C)
-	# Denominador P(C=c)
+	# Denominador P(C=c): suma de todas las filas con C=c
 	pC = sum(p for asign, p in tabla.items() if asign[idxC] == c_val)
 	# Numerador P(A=a, B=b, C=c)
 	num = sum(p for asign, p in tabla.items() if asign[idxA] == a_val and asign[idxB] == b_val and asign[idxC] == c_val)
 	pAB_dado_C = (num / pC) if pC > 0 else 0.0
-	# P(A|C=c), P(B|C=c)
+	# P(A|C=c) y P(B|C=c) se obtienen reutilizando la función 'condicionada'
 	pA_dado_C = condicionada(variables, tabla, A, a_val, {C: c_val})
 	pB_dado_C = condicionada(variables, tabla, B, b_val, {C: c_val})
+	# Comparamos con tolerancia numérica
 	return abs(pAB_dado_C - pA_dado_C * pB_dado_C) < tol, pAB_dado_C, pA_dado_C * pB_dado_C
 
 
@@ -85,10 +94,12 @@ def construir_conjunta_desde_prior_y_cpts(prior_C: dict, cpt_A_dado_C: dict, cpt
 	- cpt_B_dado_C: {c_val: P(B=True|C=c_val)}
 	Devuelve (variables, valores, tabla)
 	"""
+	# Factorización por causa común: P(A,B,C) = P(C) P(A|C) P(B|C)
 	variables = ['A', 'B', 'C']
 	valores = {'A': [True, False], 'B': [True, False], 'C': [True, False]}
 	tabla = {}
 	for a, b, c in product(valores['A'], valores['B'], valores['C']):
+		# Mapear A=True -> P(A|C), A=False -> 1 - P(A|C) (análogo para B)
 		pC = prior_C[c]
 		pA = cpt_A_dado_C[c] if a else 1 - cpt_A_dado_C[c]
 		pB = cpt_B_dado_C[c] if b else 1 - cpt_B_dado_C[c]
@@ -105,6 +116,7 @@ def modo_demo():
 
 	# Modelo de causa común: C → A, C → B
 	# A y B son dependientes marginalmente, pero independientes condicionalmente dado C.
+	# Elegimos parámetros de ejemplo realistas.
 	prior_C = {True: 0.3, False: 0.7}
 	cpt_A_dado_C = {True: 0.9, False: 0.2}
 	cpt_B_dado_C = {True: 0.8, False: 0.1}
@@ -112,6 +124,7 @@ def modo_demo():
 	variables, valores, tabla = construir_conjunta_desde_prior_y_cpts(prior_C, cpt_A_dado_C, cpt_B_dado_C)
 
 	# Independencia marginal A ⟂ B ?
+	# En causa común, típicamente NO son independientes marginalmente.
 	indep, pAB, pA_pB = independencia(variables, tabla, 'A', True, 'B', True)
 	print("\n--- Independencia marginal A ⟂ B ? ---")
 	print(f"P(A=true, B=true) = {pAB:.4f}")
@@ -119,6 +132,7 @@ def modo_demo():
 	print(f"¿Independientes? {indep}")
 
 	# Independencia condicional A ⟂ B | C
+	# Dado C, A y B deberían factorizar: P(A,B|C)=P(A|C)P(B|C)
 	print("\n--- Independencia condicional A ⟂ B | C ---")
 	for c_val in [True, False]:
 		indep_c, pAB_C, pA_C_pB_C = independencia_condicional(variables, tabla, 'A', True, 'B', True, 'C', c_val)
@@ -150,10 +164,12 @@ def modo_interactivo():
 
 	variables, valores, tabla = construir_conjunta_desde_prior_y_cpts({True: pC, False: 1-pC}, {True: pA_cT, False: pA_cF}, {True: pB_cT, False: pB_cF})
 
+	# Chequeo marginal: normalmente será FALSO (dependencia) en causa común
 	indep, pAB, pA_pB = independencia(variables, tabla, 'A', True, 'B', True)
 	print(f"\nMarginal: P(A=true, B=true)={pAB:.4f} vs P(A)·P(B)={pA_pB:.4f} → Independencia: {indep}")
 
 	for c_val in [True, False]:
+		# Chequeo condicional: debería ser VERDADERO para ambos valores de C
 		indep_c, pAB_C, pA_C_pB_C = independencia_condicional(variables, tabla, 'A', True, 'B', True, 'C', c_val)
 		print(f"Condicional C={c_val}: P(A,B|C)={pAB_C:.4f} vs P(A|C)·P(B|C)={pA_C_pB_C:.4f} → {indep_c}")
 
