@@ -43,6 +43,7 @@ class TablaProbabilidadConjunta:
         # Normalizar si es necesario
         suma = sum(self.probabilidades.values())
         if abs(suma - 1.0) > 0.001:
+            # Si la suma total no es ~1, transformamos los valores a una distribución válida
             print(f"Advertencia: La suma de probabilidades es {suma:.4f}. Normalizando...")
             self.normalizar()
     
@@ -50,6 +51,7 @@ class TablaProbabilidadConjunta:
         """Normaliza la tabla para que las probabilidades sumen 1."""
         suma_total = sum(self.probabilidades.values())
         if suma_total > 0:
+            # Dividir cada celda por la suma total (normalización L1)
             for key in self.probabilidades:
                 self.probabilidades[key] /= suma_total
     
@@ -77,6 +79,7 @@ class TablaProbabilidadConjunta:
         prob_total = 0.0
         for asignacion, prob in self.probabilidades.items():
             if asignacion[idx_var] == valor:
+                # Acumular P(variable=valor, otras)
                 prob_total += prob
         
         return prob_total
@@ -110,10 +113,12 @@ class TablaProbabilidadConjunta:
                 
                 # Si además la variable de consulta tiene el valor deseado, sumar a P(consulta, evid.)
                 if asignacion[idx_consulta] == valor_consulta:
+                    # Esto acumula el numerador P(consulta, evidencia)
                     prob_conjunta += prob
         
         # P(consulta | evidencia) = P(consulta, evidencia) / P(evidencia)
         if prob_evidencia > 0:
+            # Evita división por cero cuando la evidencia tiene probabilidad nula
             return prob_conjunta / prob_evidencia
         else:
             return 0.0
@@ -165,6 +170,7 @@ class TablaProbabilidadCondicional:
         # Normalizar
         suma = sum(probabilidades.values())
         if abs(suma - 1.0) > 0.001:
+            # Reescalar la fila para que cada conjunto de probabilidades condicionales sume 1
             probabilidades = {k: v/suma for k, v in probabilidades.items()}
         
         self.tabla[tuple(asignacion_padres)] = probabilidades
@@ -186,6 +192,7 @@ class TablaProbabilidadCondicional:
         if tuple(asignacion_padres) in self.tabla:
             suma = sum(self.tabla[tuple(asignacion_padres)].values())
             if suma > 0:
+                # Repartir proporcionalmente manteniendo las relaciones entre valores
                 for valor in self.tabla[tuple(asignacion_padres)]:
                     self.tabla[tuple(asignacion_padres)][valor] /= suma
     
@@ -225,6 +232,7 @@ def aplicar_regla_cadena(probabilidades_cond):
     """
     prob_conjunta = 1.0
     for prob in probabilidades_cond:
+        # Producto acumulativo de términos condicionales/marginales
         prob_conjunta *= prob
     return prob_conjunta
 
@@ -427,6 +435,7 @@ def modo_interactivo():
             try:
                 p = float(input(f"P(X={x}, Y={y}): ").strip() or "0.25")
             except:
+                # Valor por defecto si el parseo falla
                 p = 0.25
             prob_conj[(x, y)] = p
     

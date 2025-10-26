@@ -30,20 +30,20 @@ class Sensor:
     def __init__(self, nombre, media_ruido=0.0, desviacion_ruido=1.0):
         """
         Inicializa un sensor con parámetros de ruido.
-        
-        :param nombre: identificador del sensor
-        :param media_ruido: media del ruido gaussiano
-        :param desviacion_ruido: desviación estándar del ruido
+
+        :parametro nombre: identificador del sensor
+        :parametro media_ruido: media del ruido gaussiano
+        :parametro desviacion_ruido: desviación estándar del ruido
         """
         self.nombre = nombre
         self.media_ruido = media_ruido
         self.desviacion_ruido = desviacion_ruido
-    
+
     def medir(self, valor_real):
         """
         Simula una medición con ruido gaussiano.
         
-        :param valor_real: valor verdadero a medir
+        :parametro valor_real: valor verdadero a medir
         :return: medición ruidosa
         """
         # Añadir ruido gaussiano: medición = valor_real + N(media_ruido, desviacion²)
@@ -54,13 +54,13 @@ class Sensor:
     def probabilidad_observacion(self, medicion, valor_hipotetico):
         """
         Calcula P(medición | valor_hipotetico) usando distribución gaussiana.
-        
-        :param medicion: valor observado
-        :param valor_hipotetico: hipótesis sobre el valor real
+
+        :parametro medicion: valor observado
+        :parametro valor_hipotetico: hipótesis sobre el valor real
         :return: probabilidad (verosimilitud)
         """
         # P(z | x) ~ N(x, σ²)
-        # Función de densidad gaussiana
+        # Usamos la densidad gaussiana como verosimilitud (no es prob. discreta)
         diferencia = medicion - valor_hipotetico
         exponente = -0.5 * (diferencia / self.desviacion_ruido) ** 2
         coef = 1.0 / (self.desviacion_ruido * np.sqrt(2 * np.pi))
@@ -86,10 +86,10 @@ class FusionSensores:
         Estima el valor real usando actualización bayesiana.
         
         :param mediciones: dict {nombre_sensor: medición}
-        :param prior_media: media de la distribución a priori
-        :param prior_varianza: varianza de la distribución a priori
-        :param rango: rango de valores posibles (min, max)
-        :param num_hipotesis: número de hipótesis a evaluar
+        :parametro prior_media: media de la distribución a priori
+        :parametro prior_varianza: varianza de la distribución a priori
+        :parametro rango: rango de valores posibles (min, max)
+        :parametro num_hipotesis: número de hipótesis a evaluar
         :return: valor estimado (máximo a posteriori)
         """
         # Generar hipótesis sobre el valor real
@@ -139,7 +139,7 @@ class FusionSensores:
         """
         Fusión simple: promedio ponderado por confianza de sensores.
         
-        :param mediciones: dict {nombre_sensor: medición}
+        :parametro mediciones: dict {nombre_sensor: medición}
         :return: estimación fusionada
         """
         # Ponderación inversa por varianza (sensores más precisos tienen más peso)
@@ -167,9 +167,9 @@ class FiltroKalman1D:
     def __init__(self, media_inicial=0.0, varianza_inicial=1000.0):
         """
         Inicializa el filtro de Kalman.
-        
-        :param media_inicial: estimación inicial del estado
-        :param varianza_inicial: incertidumbre inicial
+
+        :parametro media_inicial: estimación inicial del estado
+        :parametro varianza_inicial: incertidumbre inicial
         """
         # Creencia actual (distribución gaussiana)
         self.media = media_inicial
@@ -182,9 +182,9 @@ class FiltroKalman1D:
     def predecir(self, movimiento, varianza_movimiento):
         """
         Paso de predicción: actualizar creencia según modelo de movimiento.
-        
-        :param movimiento: cambio esperado en el estado
-        :param varianza_movimiento: incertidumbre del movimiento
+
+        :parametro movimiento: cambio esperado en el estado
+        :parametro varianza_movimiento: incertidumbre del movimiento
         """
         # Modelo: x_nuevo = x_anterior + movimiento
         # La varianza aumenta (se vuelve más incierto)
@@ -194,9 +194,9 @@ class FiltroKalman1D:
     def actualizar(self, medicion, varianza_sensor):
         """
         Paso de actualización: incorporar nueva medición del sensor.
-        
-        :param medicion: valor medido
-        :param varianza_sensor: varianza del sensor
+
+        :parametro medicion: valor medido
+        :parametro varianza_sensor: varianza del sensor
         """
         # Ganancia de Kalman: K = σ²_predicción / (σ²_predicción + σ²_sensor)
         # Determina cuánto confiamos en la medición vs. la predicción

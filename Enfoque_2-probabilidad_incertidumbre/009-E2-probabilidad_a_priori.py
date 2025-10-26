@@ -33,6 +33,7 @@ class DistribucionAPriori:
         :param valores: lista de valores posibles
         :param probabilidades: probabilidad de cada valor
         """
+        # Validación básica: la distribución debe estar normalizada
         assert abs(sum(probabilidades) - 1.0) < 0.001, "Las probabilidades deben sumar 1"
         self.nombre = nombre
         self.valores = valores
@@ -63,6 +64,7 @@ def crear_distribucion_uniforme(valores):
     :return: DistribucionAPriori
     """
     n = len(valores)
+    # Principio de indiferencia: repartir 1 por igual entre n resultados
     probabilidades = [1.0/n] * n
     return DistribucionAPriori("Uniforme (No Informativa)", valores, probabilidades)
 
@@ -75,6 +77,7 @@ def crear_distribucion_informativa(valores, pesos):
     :return: DistribucionAPriori
     """
     total = sum(pesos)
+    # Normalizar pesos relativos para obtener probabilidades (proporcionales a 'pesos')
     probabilidades = [p/total for p in pesos]
     return DistribucionAPriori("Informativa (Con Conocimiento Previo)", valores, probabilidades)
 
@@ -90,7 +93,8 @@ def actualizacion_bayesiana(prior, evidencia, verosimilitud):
     :param verosimilitud: dict {valor: P(evidencia|valor)}
     :return: DistribucionAPriori posterior
     """
-    # Calcular P(E) = Σ P(E|Hi) × P(Hi)
+    # Calcular la constante de normalización (evidencia):
+    # P(E) = Σ_i P(E|Hi) × P(Hi)
     prob_evidencia = 0.0
     for i, valor in enumerate(prior.valores):
         P_E_dado_H = verosimilitud.get(valor, 0.0)
@@ -103,7 +107,8 @@ def actualizacion_bayesiana(prior, evidencia, verosimilitud):
         P_E_dado_H = verosimilitud.get(valor, 0.0)
         P_H = prior.probabilidades[i]
         
-        # P(H|E) = P(E|H) × P(H) / P(E)
+        # Teorema de Bayes (para cada hipótesis Hi):
+        # P(Hi|E) = [P(E|Hi) × P(Hi)] / P(E)
         if prob_evidencia > 0:
             P_H_dado_E = (P_E_dado_H * P_H) / prob_evidencia
         else:

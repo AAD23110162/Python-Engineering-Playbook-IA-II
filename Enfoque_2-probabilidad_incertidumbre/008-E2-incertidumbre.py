@@ -114,16 +114,19 @@ class IntervaloProbabilidad:
         :param limite_inferior: cota inferior (mínima probabilidad)
         :param limite_superior: cota superior (máxima probabilidad)
         """
+        # Aseguramos que el intervalo esté bien definido dentro de [0,1]
         assert 0 <= limite_inferior <= limite_superior <= 1, "Límites deben estar en [0, 1]"
         self.min = limite_inferior
         self.max = limite_superior
     
     def amplitud(self):
         """Retorna la amplitud del intervalo (mide la ignorancia)."""
+        # Amplitud = máximo - mínimo (0 → certeza, grande → mucha ignorancia)
         return self.max - self.min
     
     def punto_medio(self):
         """Retorna el punto medio del intervalo."""
+        # Promedio de los límites; útil como estimador puntual simple
         return (self.min + self.max) / 2
     
     def contiene(self, probabilidad):
@@ -145,6 +148,7 @@ def calcular_entropia(probabilidades):
     """
     entropia = 0.0
     for p in probabilidades:
+        # Ignoramos términos con p=0 para evitar log(0) y porque no aportan a la suma
         if p > 0:  # Evitar log(0)
             entropia -= p * np.log2(p)
     return entropia
@@ -161,6 +165,7 @@ def clasificar_incertidumbre(descripcion):
     
     desc_lower = descripcion.lower()
     
+    # Heurística simple basada en palabras clave (solo para fines didácticos)
     score_epistemica = sum(1 for kw in keywords_epistemica if kw in desc_lower)
     score_aleatoria = sum(1 for kw in keywords_aleatoria if kw in desc_lower)
     
