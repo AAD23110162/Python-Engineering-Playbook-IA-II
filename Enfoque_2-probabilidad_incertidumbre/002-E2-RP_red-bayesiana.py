@@ -42,12 +42,20 @@ class NodoRedBayesiana:
         :return: probabilidad (float)
         """
         # Construir clave de consulta en el orden de los padres
+        # Si este nodo tiene padres, extraemos sus valores en el orden correcto
         if self.padres:
+            # Ejemplo: si padres=['Robo', 'Terremoto'] y valores_padres={'Robo':True, 'Terremoto':False}
+            # entonces clave = (True, False)
             clave = tuple(valores_padres[p] for p in self.padres)
         else:
+            # Si no tiene padres, la clave es una tupla vacía
             clave = ()
         
+        # Buscar en la tabla CPT la probabilidad de que este nodo sea True
         prob_true = self.cpt.get(clave, 0.5)  # Por defecto 0.5 si no está definido
+        
+        # Si consultamos P(nodo=True), devolvemos prob_true
+        # Si consultamos P(nodo=False), devolvemos 1 - prob_true
         return prob_true if valor else (1.0 - prob_true)
 
 class RedBayesiana:
@@ -74,10 +82,12 @@ class RedBayesiana:
         :parametro verbose: si True, muestra el proceso paso a paso
         :return: probabilidad normalizada de la consulta
         """
+        # Extraer la variable de consulta y su valor deseado
         var_consulta = list(consulta.keys())[0]
         valor_consulta = consulta[var_consulta]
         
-        # Variables ocultas (no en consulta ni evidencia)
+        # Identificar variables ocultas: aquellas que no están en consulta ni en evidencia
+        # Ejemplo: si consultamos P(Robo | Llamada=True), las ocultas son {Alarma, Terremoto}
         todas = set(self.nodos.keys())
         ocultas = todas - {var_consulta} - set(evidencia.keys())
         
@@ -86,39 +96,48 @@ class RedBayesiana:
             print(f"Consulta: P({var_consulta}={valor_consulta} | {evidencia})")
             print(f"Variables ocultas: {sorted(ocultas)}")
         
-        # Enumerar sobre todas las combinaciones de variables ocultas
+        # Acumuladores para las probabilidades conjuntas
+        # Calcularemos P(consulta=True, evidencia) y P(consulta=False, evidencia)
         prob_conjunta_true = 0.0
         prob_conjunta_false = 0.0
         
         # Generar todas las asignaciones posibles de variables ocultas
+        # Si hay 2 variables ocultas, habrá 2^2 = 4 combinaciones: (T,T), (T,F), (F,T), (F,F)
         if ocultas:
             combinaciones = list(product([True, False], repeat=len(ocultas)))
             lista_ocultas = sorted(ocultas)
         else:
+            # Si no hay variables ocultas, solo hay una "combinación" vacía
             combinaciones = [()]
             lista_ocultas = []
         
+        # Para cada posible asignación de las variables ocultas...
         for asignacion_ocultas in combinaciones:
-            # Construir asignación completa
-            valores = evidencia.copy()
+            # Construir una asignación completa de TODAS las variables
+            valores = evidencia.copy()  # Empezamos con la evidencia conocida
+            
+            # Agregar los valores de las variables ocultas
             for i, var in enumerate(lista_ocultas):
                 valores[var] = asignacion_ocultas[i]
             
-            # Calcular para consulta=True
+            # Calcular P(consulta=True, evidencia, ocultas)
             valores[var_consulta] = True
             prob_true = self._probabilidad_conjunta(valores)
-            prob_conjunta_true += prob_true
+            prob_conjunta_true += prob_true  # Sumar a la marginal
             
-            # Calcular para consulta=False
+            # Calcular P(consulta=False, evidencia, ocultas)
             valores[var_consulta] = False
             prob_false = self._probabilidad_conjunta(valores)
-            prob_conjunta_false += prob_false
+            prob_conjunta_false += prob_false  # Sumar a la marginal
         
-        # Normalizar
+        # Normalizar usando la regla de Bayes
+        # P(consulta | evidencia) = P(consulta, evidencia) / P(evidencia)
+        # donde P(evidencia) = P(consulta=True, evidencia) + P(consulta=False, evidencia)
         total = prob_conjunta_true + prob_conjunta_false
         if total == 0:
             return 0.0
         
+        # Devolver la probabilidad correspondiente al valor consultado
         resultado = prob_conjunta_true / total if valor_consulta else prob_conjunta_false / total
         
         if verbose:
@@ -132,10 +151,18 @@ class RedBayesiana:
         Calcula la probabilidad conjunta P(X1=x1, X2=x2, ..., Xn=xn).
         Usa la regla de la cadena: P(X1,...,Xn) = Π P(Xi | padres(Xi))
         """
+        # Inicializar probabilidad en 1.0 (elemento neutro de la multiplicación)
         prob = 1.0
+        
+        # Recorrer todos los nodos en orden topológico (padres antes que hijos)
+        # Multiplicar P(Xi | padres(Xi)) para cada nodo
+        # Ejemplo: P(Robo, Terremoto, Alarma, Llamada) = 
+        #          P(Robo) × P(Terremoto) × P(Alarma|Robo,Terremoto) × P(Llamada|Alarma)
         for var in self.orden_topologico:
             nodo = self.nodos[var]
+            # Obtener P(var=valor | padres) y multiplicarlo al producto acumulado
             prob *= nodo.probabilidad(valores[var], valores)
+        
         return prob
 
 def crear_red_alarma_simple():
@@ -149,48 +176,62 @@ def crear_red_alarma_simple():
              |
           Llamada
     """
-    # Nodo Robo (sin padres)
+    # ========== NODOS RAÍZ (SIN PADRES) ==========
+    
+    # Nodo Robo (sin padres): representa la probabilidad a priori de un robo
     nodo_robo = NodoRedBayesiana(
         nombre='Robo',
         padres=[],
-        cpt={(): 0.001}  # P(Robo=True) = 0.001
+        cpt={(): 0.001}  # P(Robo=True) = 0.1% (robo es poco probable)
     )
     
-    # Nodo Terremoto (sin padres)
+    # Nodo Terremoto (sin padres): probabilidad a priori de un terremoto
     nodo_terremoto = NodoRedBayesiana(
         nombre='Terremoto',
         padres=[],
-        cpt={(): 0.002}  # P(Terremoto=True) = 0.002
+        cpt={(): 0.002}  # P(Terremoto=True) = 0.2% (terremoto es poco probable)
     )
     
+    # ========== NODO INTERMEDIO ==========
+    
     # Nodo Alarma (padres: Robo, Terremoto)
+    # La alarma puede sonar por un robo, un terremoto, o ambos
     nodo_alarma = NodoRedBayesiana(
         nombre='Alarma',
         padres=['Robo', 'Terremoto'],
         cpt={
-            (True, True): 0.95,    # P(Alarma | Robo, Terremoto)
-            (True, False): 0.94,   # P(Alarma | Robo, ¬Terremoto)
-            (False, True): 0.29,   # P(Alarma | ¬Robo, Terremoto)
-            (False, False): 0.001  # P(Alarma | ¬Robo, ¬Terremoto)
+            # Formato: (Robo, Terremoto): P(Alarma=True | Robo, Terremoto)
+            (True, True): 0.95,    # Si hay robo Y terremoto, alarma suena con 95% prob.
+            (True, False): 0.94,   # Si hay robo pero NO terremoto, 94% de prob.
+            (False, True): 0.29,   # Si NO hay robo pero SÍ terremoto, 29% de prob.
+            (False, False): 0.001  # Si NO hay ni robo ni terremoto, solo 0.1% (falsa alarma)
         }
     )
     
-    # Nodo Llamada (padre: Alarma)
+    # ========== NODO HOJA ==========
+    
+    # Nodo Llamada (padre: Alarma): alguien llama si escucha la alarma
     nodo_llamada = NodoRedBayesiana(
         nombre='Llamada',
         padres=['Alarma'],
         cpt={
-            (True,): 0.90,   # P(Llamada | Alarma)
-            (False,): 0.05   # P(Llamada | ¬Alarma)
+            # Formato: (Alarma,): P(Llamada=True | Alarma)
+            (True,): 0.90,   # Si la alarma suena, alguien llama con 90% de prob.
+            (False,): 0.05   # Si la alarma NO suena, solo 5% de prob. de llamada
         }
     )
     
-    # Construir la red
+    # ========== CONSTRUCCIÓN DE LA RED ==========
+    
+    # Crear objeto red y agregar todos los nodos
     red = RedBayesiana()
     red.agregar_nodo(nodo_robo)
     red.agregar_nodo(nodo_terremoto)
     red.agregar_nodo(nodo_alarma)
     red.agregar_nodo(nodo_llamada)
+    
+    # Establecer orden topológico: padres antes que hijos
+    # Este orden es crucial para calcular probabilidades conjuntas correctamente
     red.establecer_orden_topologico(['Robo', 'Terremoto', 'Alarma', 'Llamada'])
     
     return red
@@ -201,6 +242,7 @@ def modo_demo():
     print("MODO DEMO: Red Bayesiana - Sistema de Alarma")
     print("="*70)
     
+    # Crear la red bayesiana de alarma
     red = crear_red_alarma_simple()
     
     print("\n--- Estructura de la Red ---")
@@ -220,46 +262,57 @@ def modo_demo():
     print("  Alarma=True:  0.90")
     print("  Alarma=False: 0.05")
     
-    # Consulta 1: P(Robo | Llamada=True)
+    # ========== CONSULTA 1: P(Robo | Llamada=True) ==========
+    # Pregunta: Si recibo una llamada, ¿qué tan probable es que haya un robo?
     print("\n" + "-"*70)
     print("CONSULTA 1: ¿Cuál es la probabilidad de robo si recibo una llamada?")
     print("P(Robo=True | Llamada=True)")
     print("-"*70)
     
+    # Realizar inferencia: consultar P(Robo=True) dado que observamos Llamada=True
     prob = red.inferencia_por_enumeracion(
-        consulta={'Robo': True},
-        evidencia={'Llamada': True},
-        verbose=True
+        consulta={'Robo': True},      # Variable de interés: Robo
+        evidencia={'Llamada': True},  # Evidencia observada: alguien llamó
+        verbose=True                   # Mostrar pasos intermedios
     )
     print(f"\n>>> Resultado: P(Robo=True | Llamada=True) = {prob:.6f}")
     print(f"    Interpretación: Hay un {prob*100:.4f}% de probabilidad de robo.")
+    print(f"    (La probabilidad aumenta desde 0.1% a priori hasta ~1.6%)")
     
-    # Consulta 2: P(Robo | Llamada=True, Terremoto=False)
+    # ========== CONSULTA 2: P(Robo | Llamada=True, Terremoto=False) ==========
+    # Pregunta: Si recibo una llamada Y sé que NO hubo terremoto, ¿qué tan probable es el robo?
+    # Esta consulta elimina la explicación alternativa del terremoto
     print("\n" + "-"*70)
     print("CONSULTA 2: ¿Probabilidad de robo si hay llamada pero NO hubo terremoto?")
     print("P(Robo=True | Llamada=True, Terremoto=False)")
     print("-"*70)
     
+    # Realizar inferencia con más evidencia
     prob2 = red.inferencia_por_enumeracion(
-        consulta={'Robo': True},
-        evidencia={'Llamada': True, 'Terremoto': False},
+        consulta={'Robo': True},                            # Variable de interés
+        evidencia={'Llamada': True, 'Terremoto': False},   # Evidencia adicional
         verbose=True
     )
     print(f"\n>>> Resultado: P(Robo=True | Llamada=True, Terremoto=False) = {prob2:.6f}")
     print(f"    Interpretación: Aumenta a {prob2*100:.4f}% (descartamos terremoto).")
+    print(f"    (Al descartar terremoto, la única explicación razonable es el robo)")
     
-    # Consulta 3: P(Alarma | Llamada=True)
+    # ========== CONSULTA 3: P(Alarma | Llamada=True) ==========
+    # Pregunta: Si recibo una llamada, ¿qué tan probable es que la alarma haya sonado?
+    # (Puede haber llamadas sin que la alarma suene, con pequeña probabilidad)
     print("\n" + "-"*70)
     print("CONSULTA 3: ¿Probabilidad de que la alarma haya sonado dado que hubo llamada?")
     print("P(Alarma=True | Llamada=True)")
     print("-"*70)
     
+    # Consultar sobre un nodo intermedio
     prob3 = red.inferencia_por_enumeracion(
-        consulta={'Alarma': True},
-        evidencia={'Llamada': True},
+        consulta={'Alarma': True},    # Ahora consultamos sobre Alarma
+        evidencia={'Llamada': True},  # Dada la evidencia de la llamada
         verbose=True
     )
     print(f"\n>>> Resultado: P(Alarma=True | Llamada=True) = {prob3:.6f}")
+    print(f"    (Solo ~4.3% porque hay llamadas falsas con 5% de probabilidad)")
 
 def modo_interactivo():
     """Ejecuta el modo interactivo con consultas del usuario."""
@@ -267,44 +320,56 @@ def modo_interactivo():
     print("MODO INTERACTIVO: Red Bayesiana - Sistema de Alarma")
     print("="*70)
     
+    # Cargar la red bayesiana
     red = crear_red_alarma_simple()
     
     print("\nRed cargada: Sistema de Alarma")
     print("Variables disponibles: Robo, Terremoto, Alarma, Llamada")
     
+    # ========== PASO 1: DEFINIR EVIDENCIA ==========
+    # El usuario especifica qué variables ha observado y sus valores
     print("\n--- Definir Evidencia ---")
     print("Ingresa las variables observadas (deja en blanco para terminar)")
     
     evidencia = {}
+    # Preguntar por cada variable observable
     for var in ['Llamada', 'Alarma', 'Terremoto']:
         respuesta = input(f"¿{var} observado? (s/n/enter para omitir): ").strip().lower()
         if respuesta == 's':
-            evidencia[var] = True
+            evidencia[var] = True   # Variable observada como verdadera
         elif respuesta == 'n':
-            evidencia[var] = False
+            evidencia[var] = False  # Variable observada como falsa
+        # Si presiona enter, no se agrega a la evidencia (no observada)
     
+    # Si no se definió ninguna evidencia, usar una por defecto
     if not evidencia:
         print("No se definió evidencia. Usando Llamada=True por defecto.")
         evidencia = {'Llamada': True}
     
     print(f"\nEvidencia definida: {evidencia}")
     
+    # ========== PASO 2: DEFINIR CONSULTA ==========
+    # El usuario especifica sobre qué variable desea conocer la probabilidad
     print("\n--- Definir Consulta ---")
     print("Variables disponibles para consulta: Robo, Terremoto, Alarma")
     var_consulta = input("¿Sobre qué variable deseas consultar? (default: Robo): ").strip() or 'Robo'
     
+    # Validar que la variable sea válida
     if var_consulta not in ['Robo', 'Terremoto', 'Alarma']:
         print(f"Variable '{var_consulta}' no reconocida. Usando 'Robo'.")
         var_consulta = 'Robo'
     
+    # ========== PASO 3: REALIZAR INFERENCIA ==========
     print(f"\nCalculando P({var_consulta}=True | {evidencia})...")
     
+    # Ejecutar el algoritmo de inferencia por enumeración
     prob = red.inferencia_por_enumeracion(
-        consulta={var_consulta: True},
-        evidencia=evidencia,
-        verbose=True
+        consulta={var_consulta: True},  # Consultar P(var=True)
+        evidencia=evidencia,             # Dada la evidencia observada
+        verbose=True                     # Mostrar detalles del cálculo
     )
     
+    # ========== PASO 4: MOSTRAR RESULTADO ==========
     print(f"\n{'='*70}")
     print(f"RESULTADO: P({var_consulta}=True | evidencia) = {prob:.6f} ({prob*100:.2f}%)")
     print(f"{'='*70}")
