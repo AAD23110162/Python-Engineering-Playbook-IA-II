@@ -486,4 +486,4 @@ def main():
         modo_demo()  # Modo con comparación de todos los métodos
 
 if __name__ == "__main__":
-    main()
+    main() 
