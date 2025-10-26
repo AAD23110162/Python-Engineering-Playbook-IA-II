@@ -24,10 +24,13 @@ class NodoMuestreo:
 	def __init__(self, nombre: str, padres: List[str]):
 		self.nombre = nombre
 		self.padres = padres[:]
+		# CPT: {tuple(valores_padres_bool): P(X=True|padres)}
+		# Para nodos raíz, la clave es la tupla vacía () → P(X=True)
 		self.cpt: Dict[tuple, float] = {}
 	
 	def establecer_cpt(self, cpt: Dict[tuple, float]):
 		"""Establece la CPT del nodo."""
+		# Normalizamos claves a tuplas (por si vienen como listas) y almacenamos P(X=True|padres)
 		self.cpt = {tuple(k): v for k, v in cpt.items()}
 	
 	def muestrear(self, asignacion_padres: Dict[str, bool]) -> bool:
@@ -39,11 +42,11 @@ class NodoMuestreo:
 			# Nodo raíz: muestrear según P(X=True)
 			p_true = self.cpt[()]
 		else:
-			# Obtener P(X=True | valores de padres)
+			# Obtener P(X=True | valores de padres) en el mismo orden declarado
 			clave = tuple(asignacion_padres[p] for p in self.padres)
 			p_true = self.cpt[clave]
 		
-		# Muestreo: retornar True con probabilidad p_true
+		# Muestreo Bernoulli: retornar True con probabilidad p_true
 		return random.random() < p_true
 
 
@@ -53,6 +56,7 @@ class RedBayesianaMuestreo:
 	def __init__(self, nodos: List[NodoMuestreo]):
 		self.nodos = {n.nombre: n for n in nodos}
 		# Orden topológico (asumimos que se proporciona en orden correcto)
+		# En escenarios reales, convendría validar que no hay ciclos y calcular el orden.
 		self.orden = [n.nombre for n in nodos]
 	
 	def muestreo_directo(self) -> Dict[str, bool]:
@@ -61,6 +65,7 @@ class RedBayesianaMuestreo:
 		Cada variable se muestrea condicionada a los valores ya muestreados de sus padres.
 		"""
 		muestra = {}
+		# Recorremos en orden para garantizar que los padres ya están en 'muestra'
 		for nombre in self.orden:
 			nodo = self.nodos[nombre]
 			# Muestrear el nodo dado los valores actuales de sus padres
@@ -74,14 +79,15 @@ class RedBayesianaMuestreo:
 		"""
 		muestras_validas = []
 		intentos = 0
-		max_intentos = num_muestras * 1000  # Límite para evitar bucles infinitos
+		# Límite para evitar bucles infinitos cuando P(evidencia) es muy pequeña
+		max_intentos = num_muestras * 1000
 		
 		while len(muestras_validas) < num_muestras and intentos < max_intentos:
-			# Generar una muestra
+			# Generar una muestra completa de la red
 			muestra = self.muestreo_directo()
 			intentos += 1
 			
-			# Verificar si es consistente con la evidencia
+			# Verificar consistencia con evidencia: todas las variables coinciden
 			consistente = all(muestra[var] == val for var, val in evidencia.items())
 			
 			if consistente:
@@ -97,6 +103,7 @@ class RedBayesianaMuestreo:
 		if not muestras:
 			return 0.0
 		
+		# Frecuencia relativa del evento en las muestras
 		count = sum(1 for m in muestras if m[consulta_var] == consulta_val)
 		return count / len(muestras)
 
@@ -115,7 +122,7 @@ def modo_demo():
 	B = NodoMuestreo('B', ['A'])
 	C = NodoMuestreo('C', ['A'])
 	
-	A.establecer_cpt({(): 0.6})  # P(A=True)=0.6
+	A.establecer_cpt({(): 0.6})  # P(A=True)=0.6 (prior)
 	B.establecer_cpt({
 		(True,): 0.7,   # P(B=True|A=True)
 		(False,): 0.2   # P(B=True|A=False)
@@ -130,12 +137,14 @@ def modo_demo():
 	# Muestreo directo
 	print("\n>>> Muestreo Directo (10,000 muestras)")
 	num_muestras_directo = 10000
+	# Generamos N muestras completas independientes siguiendo la red
 	muestras_directas = [red.muestreo_directo() for _ in range(num_muestras_directo)]
 	
 	p_a = red.estimar_probabilidad(muestras_directas, 'A', True)
 	p_b = red.estimar_probabilidad(muestras_directas, 'B', True)
 	p_c = red.estimar_probabilidad(muestras_directas, 'C', True)
 	
+	# Teóricos: P(B)=Σ_a P(B|a)P(a) y P(C)=Σ_a P(C|a)P(a)
 	print(f"P(A=True) ≈ {p_a:.3f} (teórico: 0.600)")
 	print(f"P(B=True) ≈ {p_b:.3f} (teórico: {0.6*0.7 + 0.4*0.2:.3f})")
 	print(f"P(C=True) ≈ {p_c:.3f} (teórico: {0.6*0.8 + 0.4*0.1:.3f})")
@@ -187,6 +196,7 @@ def modo_interactivo():
 	
 	try:
 		c_obs = input("\nValor observado de C (true/false): ").strip().lower()
+		# Aceptamos entradas como 't', 'true', 'si', 's' → True
 		c_valor = c_obs.startswith('t')
 		num = int(input("Número de muestras válidas deseadas: ").strip() or "1000")
 	except:
@@ -226,6 +236,7 @@ def main():
 	elif opcion == '2':
 		modo_interactivo()
 	else:
+		# Entrada no válida → ejecutamos la DEMO por defecto
 		modo_demo()
 	print("\n" + "="*70)
 	print("FIN DEL PROGRAMA")
