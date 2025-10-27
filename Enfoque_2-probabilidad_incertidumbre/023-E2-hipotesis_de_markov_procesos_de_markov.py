@@ -1,18 +1,19 @@
 """
 023-E2-hipotesis_de_markov_procesos_de_markov.py
--------------------------------------------------
-Este script ilustra la hipótesis de Markov y los procesos de Markov discretos:
-- Simula cadenas de Markov de tiempo discreto con matriz de transición.
-- Estima la distribución estacionaria empírica y verifica convergencia.
-- Verifica empíricamente la propiedad de Markov: P(X_{t+1}|X_t)=P(X_{t+1}|X_t,X_{t-1}).
+--------------------------------
+Este script explica la Hipótesis de Markov y los Procesos de Markov:
+- Expone la propiedad de memoria limitada (primer orden y orden-k).
+- Define procesos estocásticos y su transición entre estados.
+- Relaciona cadenas de Markov con grafos y dinámica temporal.
+- Discute supuestos y limitaciones de modelado bajo la hipótesis de Markov.
+- Variables y funciones en español.
 
-Modos de ejecución:
-1. DEMO: cadena simple de 3 estados con simulación y diagnósticos.
-2. INTERACTIVO: permite definir pasos e imprimir estadísticas básicas.
+El programa puede ejecutarse en dos modos:
+1. DEMO: simulación de cadenas de Markov simples.
+2. INTERACTIVO: permite definir estados, transiciones y ejecutar trayectorias.
 
 Autor: Alejandro Aguirre Díaz
 """
-
 import random
 from typing import Dict, List, Tuple
 
@@ -206,19 +207,4 @@ def main():
 if __name__ == "__main__":
 	main()
 
-"""
-023-E2-hipotesis_de_markov_procesos_de_markov.py
---------------------------------
-Este script explica la Hipótesis de Markov y los Procesos de Markov:
-- Expone la propiedad de memoria limitada (primer orden y orden-k).
-- Define procesos estocásticos y su transición entre estados.
-- Relaciona cadenas de Markov con grafos y dinámica temporal.
-- Discute supuestos y limitaciones de modelado bajo la hipótesis de Markov.
-- Variables y funciones en español.
 
-El programa puede ejecutarse en dos modos:
-1. DEMO: simulación de cadenas de Markov simples.
-2. INTERACTIVO: permite definir estados, transiciones y ejecutar trayectorias.
-
-Autor: Alejandro Aguirre Díaz
-"""
