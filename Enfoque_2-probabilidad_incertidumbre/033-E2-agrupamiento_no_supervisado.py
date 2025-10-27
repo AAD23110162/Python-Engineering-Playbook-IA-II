@@ -48,32 +48,38 @@ class KMedias:
     
     def _inicializar_centroides(self, datos: List[List[float]]):
         """Inicializa centroides seleccionando k puntos aleatorios."""
-        # K-means++: inicialización mejorada
+        # K-means++: inicialización mejorada que evita centroides agrupados
         # Primer centroide aleatorio
         self.centroides = [random.choice(datos)[:]]
         
         # Seleccionar k-1 centroides restantes
         for _ in range(self.k - 1):
-            # Calcular distancias al centroide más cercano
+            # Calcular distancias al centroide más cercano para cada punto
+            # Esto identifica qué puntos están más lejos de centroides existentes
             distancias = []
             for punto in datos:
                 min_dist = min(self._distancia_euclidiana(punto, c) 
                               for c in self.centroides)
+                # Elevamos al cuadrado para dar más peso a puntos lejanos
                 distancias.append(min_dist ** 2)
             
             # Seleccionar siguiente centroide con probabilidad proporcional a distancia²
+            # Puntos lejanos tienen más probabilidad de ser elegidos como centroides
             suma_dist = sum(distancias)
             if suma_dist > 0:
+                # Normalizamos para obtener distribución de probabilidad
                 probs = [d / suma_dist for d in distancias]
-                # Muestreo ponderado
+                # Muestreo ponderado: simulamos ruleta con acumulación
                 r = random.random()
                 acum = 0.0
                 for i, p in enumerate(probs):
                     acum += p
                     if r <= acum:
+                        # Copiamos el punto seleccionado como nuevo centroide
                         self.centroides.append(datos[i][:])
                         break
             else:
+                # Caso degenerado: todos los puntos están en los mismos lugares
                 self.centroides.append(random.choice(datos)[:])
     
     def _asignar_clusters(self, datos: List[List[float]]) -> bool:
@@ -87,16 +93,20 @@ class KMedias:
         cambios = False
         
         for i, punto in enumerate(datos):
-            # Encontrar centroide más cercano
+            # Encontrar centroide más cercano calculando todas las distancias
             distancias = [self._distancia_euclidiana(punto, c) 
                          for c in self.centroides]
+            # Asignamos el punto al cluster del centroide más cercano
             cluster = distancias.index(min(distancias))
             nuevas_asignaciones.append(cluster)
             
+            # Detectar si esta asignación cambió respecto a la iteración anterior
             if i >= len(self.asignaciones) or cluster != self.asignaciones[i]:
                 cambios = True
         
+        # Actualizamos las asignaciones globales
         self.asignaciones = nuevas_asignaciones
+        # Retornamos True si al menos un punto cambió de cluster
         return cambios
     
     def _actualizar_centroides(self, datos: List[List[float]]):
@@ -104,23 +114,28 @@ class KMedias:
         dimension = len(datos[0])
         
         for j in range(self.k):
-            # Puntos asignados al cluster j
+            # Recolectamos todos los puntos asignados al cluster j
             puntos_cluster = [datos[i] for i, c in enumerate(self.asignaciones) if c == j]
             
             if puntos_cluster:
-                # Calcular media en cada dimensión
+                # Calcular media en cada dimensión (centroide = promedio de coordenadas)
                 nuevo_centroide = []
                 for d in range(dimension):
+                    # Promediamos la coordenada d de todos los puntos del cluster
                     media_d = sum(p[d] for p in puntos_cluster) / len(puntos_cluster)
                     nuevo_centroide.append(media_d)
+                # Reemplazamos el centroide anterior con el nuevo promedio
                 self.centroides[j] = nuevo_centroide
     
     def _calcular_inercia(self, datos: List[List[float]]):
         """Calcula la inercia (suma de distancias cuadradas intra-cluster)."""
         self.inercia = 0.0
         
+        # La inercia mide qué tan compactos son los clusters
+        # Menor inercia = puntos más cercanos a sus centroides
         for punto, cluster in zip(datos, self.asignaciones):
             dist = self._distancia_euclidiana(punto, self.centroides[cluster])
+            # Sumamos distancias al cuadrado para penalizar puntos lejanos
             self.inercia += dist ** 2
     
     def ajustar(self, datos: List[List[float]], verbose: bool = True) -> int:
@@ -134,22 +149,24 @@ class KMedias:
         Returns:
             Número de iteraciones realizadas
         """
-        # Inicializar centroides
+        # Inicializar centroides con K-means++
         self._inicializar_centroides(datos)
         
         # Iterar hasta convergencia o máximo de iteraciones
+        # Cada iteración: asignar → actualizar centroides → verificar convergencia
         for iteracion in range(self.max_iter):
-            # Asignar puntos a clusters
+            # Paso 1: Asignar cada punto al centroide más cercano
             cambios = self._asignar_clusters(datos)
             
-            # Actualizar centroides
+            # Paso 2: Actualizar centroides como media de puntos asignados
             self._actualizar_centroides(datos)
             
+            # Mostrar progreso cada 10 iteraciones
             if verbose and (iteracion + 1) % 10 == 0:
                 self._calcular_inercia(datos)
                 print(f"Iteración {iteracion + 1}: Inercia = {self.inercia:.4f}")
             
-            # Verificar convergencia
+            # Verificar convergencia: si ningún punto cambió de cluster, terminamos
             if not cambios:
                 self._calcular_inercia(datos)
                 if verbose:
@@ -179,7 +196,7 @@ def calcular_silueta(datos: List[List[float]], asignaciones: List[int],
     """
     Calcula el coeficiente de silueta promedio.
     Mide qué tan bien está cada punto asignado a su cluster.
-    Valores cercanos a 1 indican buenos clusters.
+    Valores cercanos a 1 indican buenos clusters, cercanos a -1 indican mala asignación.
     """
     def distancia(p1, p2):
         return math.sqrt(sum((a - b) ** 2 for a, b in zip(p1, p2)))
@@ -188,7 +205,8 @@ def calcular_silueta(datos: List[List[float]], asignaciones: List[int],
     if n == 0:
         return 0.0
     
-    # Agrupar puntos por cluster
+    # Agrupar índices de puntos por su cluster asignado
+    # Esto facilita calcular distancias intra e inter-cluster
     clusters = defaultdict(list)
     for i, c in enumerate(asignaciones):
         clusters[c].append(i)
@@ -199,27 +217,36 @@ def calcular_silueta(datos: List[List[float]], asignaciones: List[int],
         punto = datos[i]
         cluster_actual = asignaciones[i]
         
-        # a(i): distancia promedio a puntos del mismo cluster
+        # a(i): cohesión intra-cluster (distancia promedio a puntos del mismo cluster)
+        # Menor a(i) = más compacto el cluster
         puntos_mismo_cluster = [j for j in clusters[cluster_actual] if j != i]
         if puntos_mismo_cluster:
             a = sum(distancia(punto, datos[j]) for j in puntos_mismo_cluster) / len(puntos_mismo_cluster)
         else:
+            # Punto único en su cluster
             a = 0.0
         
-        # b(i): distancia promedio mínima a puntos de otros clusters
+        # b(i): separación inter-cluster (distancia promedio mínima al cluster vecino más cercano)
+        # Mayor b(i) = más separado está de otros clusters
         b = float('inf')
         for otro_cluster in clusters:
             if otro_cluster != cluster_actual:
                 puntos_otro_cluster = clusters[otro_cluster]
                 if puntos_otro_cluster:
+                    # Calculamos distancia promedio a este cluster
                     dist_promedio = sum(distancia(punto, datos[j]) 
                                        for j in puntos_otro_cluster) / len(puntos_otro_cluster)
+                    # Nos quedamos con el cluster vecino más cercano
                     b = min(b, dist_promedio)
         
         if b == float('inf'):
+            # Caso con un solo cluster
             b = 0.0
         
         # Silueta: (b - a) / max(a, b)
+        # Si b >> a (bien separado): s ≈ 1
+        # Si a >> b (mal asignado): s ≈ -1
+        # Si a ≈ b (en el límite): s ≈ 0
         if max(a, b) > 0:
             silueta = (b - a) / max(a, b)
         else:
@@ -227,6 +254,7 @@ def calcular_silueta(datos: List[List[float]], asignaciones: List[int],
         
         siluetas.append(silueta)
     
+    # Retornamos el promedio de siluetas de todos los puntos
     return sum(siluetas) / n if siluetas else 0.0
 
 # ============================================================================
@@ -248,22 +276,24 @@ def generar_clusters_2d(k: int, n_por_cluster: int,
     """
     datos = []
     
-    # Generar k clusters en círculo
+    # Generar k clusters distribuidos uniformemente en círculo
+    # Esto evita superposiciones y crea clusters claramente separados
     for i in range(k):
-        # Ángulo para distribuir clusters uniformemente
+        # Ángulo para distribuir clusters uniformemente en 360°
         angulo = 2 * math.pi * i / k
         
-        # Centro del cluster
+        # Centro del cluster i (en coordenadas polares convertidas a cartesianas)
         cx = separacion * math.cos(angulo)
         cy = separacion * math.sin(angulo)
         
-        # Generar puntos alrededor del centro
+        # Generar puntos alrededor del centro con ruido gaussiano
+        # Desviación estándar de 0.5 mantiene los puntos relativamente compactos
         for _ in range(n_por_cluster):
             x = cx + random.gauss(0, 0.5)
             y = cy + random.gauss(0, 0.5)
             datos.append([x, y])
     
-    # Mezclar aleatoriamente
+    # Mezclar aleatoriamente para simular datos no ordenados
     random.shuffle(datos)
     return datos
 
@@ -285,8 +315,10 @@ def modo_demo():
     print("Generando datos sintéticos")
     print("=" * 60)
     
+    # Configuramos el problema: 4 clusters bien separados
     k_real = 4
     n_por_cluster = 30
+    # Generamos 120 puntos distribuidos en 4 grupos
     datos = generar_clusters_2d(k_real, n_por_cluster, separacion=5.0)
     
     print(f"Generados {len(datos)} puntos en {k_real} clusters")
@@ -311,12 +343,14 @@ def modo_demo():
     print("Resultados")
     print("=" * 60)
     
+    # Mostramos las coordenadas de los centroides encontrados
     print(f"Centroides encontrados:")
     for i, c in enumerate(modelo.centroides):
         print(f"  Cluster {i+1}: [{c[0]:.2f}, {c[1]:.2f}]")
     print()
     
-    # Contar puntos por cluster
+    # Contar cuántos puntos fueron asignados a cada cluster
+    # Esto verifica el balance de la asignación
     conteos = defaultdict(int)
     for asig in modelo.asignaciones:
         conteos[asig] += 1
@@ -326,10 +360,12 @@ def modo_demo():
         print(f"  Cluster {i+1}: {conteos[i]} puntos")
     print()
     
-    # Calcular silueta
+    # Calcular métricas de calidad del clustering
     silueta = calcular_silueta(datos, modelo.asignaciones, modelo.centroides)
     print(f"Coeficiente de silueta: {silueta:.4f}")
+    print(f"  (Valores cercanos a 1 = buenos clusters)")
     print(f"Inercia: {modelo.inercia:.4f}")
+    print(f"  (Menor inercia = clusters más compactos)")
     print()
     
     # ========================================
@@ -341,6 +377,8 @@ def modo_demo():
     
     print("Probando diferentes valores de k...\n")
     
+    # El método del codo ayuda a identificar el k óptimo
+    # Buscamos el punto donde la inercia deja de disminuir significativamente
     inercias = []
     valores_k = range(2, 8)
     
@@ -351,6 +389,7 @@ def modo_demo():
         print(f"k={k_prueba}: Inercia={modelo_prueba.inercia:.2f}")
     
     print(f"\nEl 'codo' sugiere k óptimo (observar caída de inercia)")
+    print(f"Buscamos donde la curva forma un 'codo' (cambio de pendiente)")
     print()
 
 # ============================================================================
@@ -361,15 +400,15 @@ def modo_interactivo():
     """Permite al usuario configurar y ejecutar clustering."""
     print("MODO INTERACTIVO: Agrupamiento no Supervisado\n")
     
-    # Configurar número de clusters
+    # Configurar número de clusters k que queremos encontrar
     k = int(input("Ingrese el número de clusters (default=3): ") or "3")
     
-    # Generar o ingresar datos
+    # Generar o ingresar datos manualmente
     print("\n¿Desea generar datos sintéticos 2D? (s/n, default=s):")
     opcion = input("> ").strip().lower()
     
     if opcion == "n":
-        # Ingresar datos manualmente
+        # Ingresar datos manualmente (útil para probar con datos personalizados)
         print("\nIngrese puntos 2D en formato 'x y', uno por línea.")
         print("Escriba 'fin' cuando termine.\n")
         
@@ -384,7 +423,7 @@ def modo_interactivo():
                 x, y = float(partes[0]), float(partes[1])
                 datos.append([x, y])
     else:
-        # Generar datos sintéticos
+        # Generar datos sintéticos con parámetros configurables
         n_clusters_real = int(input("\nIngrese el número real de clusters a generar (default=3): ") or "3")
         n_por_cluster = int(input("Ingrese puntos por cluster (default=30): ") or "30")
         separacion = float(input("Ingrese separación entre clusters (default=3.0): ") or "3.0")
@@ -398,25 +437,27 @@ def modo_interactivo():
     
     print(f"\nTotal de puntos: {len(datos)}")
     
-    # Configurar parámetros
+    # Configurar parámetros del algoritmo
     max_iter = int(input("Ingrese el número máximo de iteraciones (default=100): ") or "100")
     
     print("\nEjecutando K-Medias...\n")
     
-    # Ajustar modelo
+    # Ajustar modelo K-Medias con los datos y parámetros configurados
     modelo = KMedias(k=k, max_iter=max_iter)
     iteraciones = modelo.ajustar(datos, verbose=True)
     
-    # Mostrar resultados
+    # Mostrar resultados finales del clustering
     print(f"\nCentroides encontrados:")
     for i, c in enumerate(modelo.centroides):
         coords = ', '.join(f'{v:.2f}' for v in c)
         print(f"  Cluster {i+1}: [{coords}]")
     
-    # Calcular silueta
+    # Calcular y mostrar métricas de calidad
     silueta = calcular_silueta(datos, modelo.asignaciones, modelo.centroides)
     print(f"\nCoeficiente de silueta: {silueta:.4f}")
+    print(f"  (Rango: -1 a 1, valores altos indican buen clustering)")
     print(f"Inercia: {modelo.inercia:.4f}")
+    print(f"  (Suma de distancias² intra-cluster, menor es mejor)")
 
 # ============================================================================
 # Main
