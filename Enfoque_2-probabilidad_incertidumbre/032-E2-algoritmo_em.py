@@ -35,6 +35,7 @@ class MezclaGaussianas:
             k: Número de componentes (gaussianas) en la mezcla
             dimension: Dimensión de los datos (default=1)
         """
+        # Configuración básica del modelo
         self.k = k  # Número de componentes
         self.d = dimension  # Dimensión de los datos
         
@@ -53,7 +54,7 @@ class MezclaGaussianas:
         Args:
             datos: Datos observados
         """
-        # Seleccionar medias aleatorias de los datos
+        # Seleccionar medias aleatorias de los datos (semillas iniciales)
         self.medias = random.sample(datos, self.k)
         
         # Varianzas iniciales: varianza global de los datos
@@ -61,7 +62,7 @@ class MezclaGaussianas:
         varianza_global = sum((x - media_global) ** 2 for x in datos) / len(datos)
         self.varianzas = [varianza_global] * self.k
         
-        # Pesos uniformes
+        # Pesos uniformes (cada componente igualmente probable al inicio)
         self.pesos = [1.0 / self.k] * self.k
     
     def _pdf_gaussiana(self, x: float, media: float, varianza: float) -> float:
@@ -86,6 +87,7 @@ class MezclaGaussianas:
         n = len(datos)
         responsabilidades = []
         
+        # Para cada punto de datos, calcular responsabilidades
         for x in datos:
             # Calcular P(x | componente j) * P(componente j) para cada j
             probs = []
@@ -97,6 +99,7 @@ class MezclaGaussianas:
                 probs.append(prob)
             
             # Normalizar para obtener responsabilidades (posterior)
+            # γ_ij = P(componente j | dato i) vía regla de Bayes
             suma = sum(probs)
             if suma > 0:
                 responsabilidades.append([p / suma for p in probs])
@@ -116,22 +119,23 @@ class MezclaGaussianas:
         """
         n = len(datos)
         
+        # Actualizar parámetros para cada componente
         for j in range(self.k):
-            # Suma de responsabilidades para el componente j
+            # Suma de responsabilidades para el componente j (masa total asignada)
             N_j = sum(resp[j] for resp in responsabilidades)
             
             if N_j < 1e-6:
                 # Evitar división por cero si un componente no tiene masa
                 continue
             
-            # Actualizar peso: π_j = N_j / n
+            # Actualizar peso: π_j = N_j / n (proporción de datos asignados)
             self.pesos[j] = N_j / n
             
-            # Actualizar media: μ_j = Σ(γ_ij * x_i) / N_j
+            # Actualizar media: μ_j = Σ(γ_ij * x_i) / N_j (media ponderada)
             media_nueva = sum(resp[j] * x for resp, x in zip(responsabilidades, datos)) / N_j
             self.medias[j] = media_nueva
             
-            # Actualizar varianza: σ²_j = Σ(γ_ij * (x_i - μ_j)²) / N_j
+            # Actualizar varianza: σ²_j = Σ(γ_ij * (x_i - μ_j)²) / N_j (varianza ponderada)
             varianza_nueva = sum(resp[j] * (x - media_nueva) ** 2 
                                 for resp, x in zip(responsabilidades, datos)) / N_j
             self.varianzas[j] = max(varianza_nueva, 1e-6)  # Evitar varianza cero
@@ -148,14 +152,15 @@ class MezclaGaussianas:
         """
         log_likelihood = 0.0
         
+        # Calcular P(x) para cada dato y sumar log(P(x))
         for x in datos:
-            # P(x) = Σ_j π_j * P(x | μ_j, σ²_j)
+            # P(x) = Σ_j π_j * P(x | μ_j, σ²_j) (mezcla de gaussianas)
             prob_x = 0.0
             for j in range(self.k):
                 likelihood = self._pdf_gaussiana(x, self.medias[j], self.varianzas[j])
                 prob_x += self.pesos[j] * likelihood
             
-            # Sumar log(P(x))
+            # Sumar log(P(x)) para obtener log-verosimilitud
             log_likelihood += math.log(prob_x + 1e-10)
         
         return log_likelihood
@@ -174,22 +179,22 @@ class MezclaGaussianas:
         Returns:
             Número de iteraciones realizadas
         """
-        # Inicializar parámetros
+        # Inicializar parámetros aleatoriamente desde los datos
         self.inicializar_aleatorio(datos)
         
-        # Log-likelihood inicial
+        # Log-likelihood inicial (para monitorear convergencia)
         log_lik_anterior = self._calcular_log_likelihood(datos)
         self.log_likelihood_historia = [log_lik_anterior]
         
         if verbose:
             print(f"Iteración 0: Log-likelihood = {log_lik_anterior:.4f}")
         
-        # Iterar EM
+        # Iterar EM hasta convergencia o máximo de iteraciones
         for iteracion in range(1, max_iter + 1):
-            # Paso E: calcular responsabilidades
+            # Paso E: calcular responsabilidades (esperanza de variables latentes)
             responsabilidades = self._paso_E(datos)
             
-            # Paso M: actualizar parámetros
+            # Paso M: actualizar parámetros (maximizar log-likelihood esperada)
             self._paso_M(datos, responsabilidades)
             
             # Calcular nuevo log-likelihood
@@ -199,7 +204,7 @@ class MezclaGaussianas:
             if verbose and iteracion % 10 == 0:
                 print(f"Iteración {iteracion}: Log-likelihood = {log_lik_actual:.4f}")
             
-            # Verificar convergencia
+            # Verificar convergencia (cambio en log-likelihood menor que tolerancia)
             mejora = log_lik_actual - log_lik_anterior
             if abs(mejora) < tolerancia:
                 if verbose:
@@ -226,19 +231,20 @@ class MezclaGaussianas:
             (componente_predicho, probabilidades)
         """
         probs = []
+        # Calcular probabilidad posterior de cada componente dado x
         for j in range(self.k):
             likelihood = self._pdf_gaussiana(x, self.medias[j], self.varianzas[j])
             prob = self.pesos[j] * likelihood
             probs.append(prob)
         
-        # Normalizar
+        # Normalizar probabilidades
         suma = sum(probs)
         if suma > 0:
             probs = [p / suma for p in probs]
         else:
             probs = [1.0 / self.k] * self.k
         
-        # Componente con mayor probabilidad
+        # Componente con mayor probabilidad (clasificación hard)
         componente = max(range(self.k), key=lambda j: probs[j])
         
         return componente, probs
@@ -261,12 +267,13 @@ def generar_mezcla_gaussianas(k: int, n_por_componente: int,
         Lista de datos generados
     """
     datos = []
+    # Generar datos de cada componente gaussiano
     for media, desv_est in params:
         for _ in range(n_por_componente):
             x = random.gauss(media, desv_est)
             datos.append(x)
     
-    # Mezclar aleatoriamente
+    # Mezclar aleatoriamente (para simular mezcla real)
     random.shuffle(datos)
     return datos
 
@@ -288,7 +295,7 @@ def modo_demo():
     print("Generando datos sintéticos")
     print("=" * 60)
     
-    # Parámetros reales de la mezcla
+    # Parámetros reales de la mezcla (ground truth)
     k_real = 3
     params_reales = [
         (0.0, 0.5),   # Componente 1: μ=0, σ=0.5
@@ -297,6 +304,7 @@ def modo_demo():
     ]
     
     n_por_componente = 50
+    # Generar datos sintéticos desde la mezcla real
     datos = generar_mezcla_gaussianas(k_real, n_por_componente, params_reales)
     
     print(f"Generados {len(datos)} puntos de una mezcla de {k_real} gaussianas")
@@ -312,6 +320,7 @@ def modo_demo():
     print("Ajustando modelo con EM")
     print("=" * 60)
     
+    # Crear modelo y ajustar con el algoritmo EM
     modelo = MezclaGaussianas(k=k_real)
     iteraciones = modelo.ajustar(datos, max_iter=50, tolerancia=1e-4, verbose=True)
     print()
@@ -338,8 +347,10 @@ def modo_demo():
     print("Clasificación de puntos de prueba")
     print("=" * 60)
     
+    # Puntos de prueba en distintas regiones
     puntos_prueba = [0.0, 2.5, 5.0, 7.5, 10.0]
     
+    # Clasificar cada punto al componente más probable
     for x in puntos_prueba:
         componente, probs = modelo.predecir(x)
         print(f"Punto x={x:.1f}:")
@@ -374,7 +385,7 @@ def modo_interactivo():
         
         print(f"\nGenerando {n_total} puntos con {k} componentes...")
         
-        # Generar parámetros aleatorios
+        # Generar parámetros aleatorios para cada componente
         random.seed()
         params = []
         for i in range(k):
@@ -383,6 +394,7 @@ def modo_interactivo():
             params.append((media, desv_est))
             print(f"  Componente {i+1}: μ={media:.2f}, σ={desv_est:.2f}")
         
+        # Generar mezcla sintética
         datos = generar_mezcla_gaussianas(k, n_por_comp, params)
     
     print(f"\nTotal de datos: {len(datos)}")
@@ -395,12 +407,12 @@ def modo_interactivo():
     
     print("\nEjecutando EM...\n")
     
-    # Ajustar modelo
+    # Ajustar modelo con el algoritmo EM
     modelo = MezclaGaussianas(k=k)
     iteraciones = modelo.ajustar(datos, max_iter=max_iter, 
                                  tolerancia=tolerancia, verbose=True)
     
-    # Mostrar resultados
+    # Mostrar resultados finales
     print(f"\nParámetros estimados:")
     for j in range(modelo.k):
         print(f"Componente {j+1}:")
