@@ -44,58 +44,44 @@ class KNN:
         self.y_train = []
     
     def _distancia(self, p1: List[float], p2: List[float]) -> float:
-        """Calcula la distancia entre dos puntos según la métrica."""
+        """Calcula la distancia entre dos puntos según la métrica elegida."""
         if self.metrica == 'manhattan':
-            # Distancia Manhattan: Σ|x_i - y_i|
+            # Distancia Manhattan: suma de diferencias absolutas
             return sum(abs(a - b) for a, b in zip(p1, p2))
         else:
-            # Distancia Euclidiana: √(Σ(x_i - y_i)²)
+            # Distancia Euclidiana: raíz cuadrada de suma de cuadrados
             return math.sqrt(sum((a - b) ** 2 for a, b in zip(p1, p2)))
     
     def entrenar(self, X: List[List[float]], y: List[str]):
         """
-        Entrena el clasificador (simplemente guarda los datos).
-        
-        Args:
-            X: Datos de entrenamiento (lista de puntos)
-            y: Etiquetas de clase
+        "Entrena" el clasificador: solo almacena los datos, no hay ajuste de parámetros.
+        k-NN es un método basado en instancias (lazy learning).
         """
-        # k-NN es un método basado en instancias (no aprende parámetros)
         self.X_train = [x[:] for x in X]
         self.y_train = y[:]
     
     def predecir(self, x: List[float]) -> Tuple[str, Dict[str, float]]:
         """
-        Predice la clase de un nuevo punto.
-        
-        Args:
-            x: Punto a clasificar
-            
-        Returns:
-            (clase_predicha, probabilidades_por_clase)
+        Predice la clase de un nuevo punto usando voto mayoritario entre los k vecinos más cercanos.
+        Devuelve la clase predicha y las probabilidades estimadas por frecuencia.
         """
         # Calcular distancias a todos los puntos de entrenamiento
         distancias = []
         for x_train, y_train in zip(self.X_train, self.y_train):
             dist = self._distancia(x, x_train)
             distancias.append((dist, y_train))
-        
         # Ordenar por distancia y tomar los k más cercanos
         distancias.sort()
         k_vecinos = distancias[:self.k]
-        
         # Votar por mayoría
         etiquetas_vecinos = [etiqueta for _, etiqueta in k_vecinos]
         conteo = Counter(etiquetas_vecinos)
-        
         # Calcular probabilidades (proporción de cada clase entre los vecinos)
         total = len(etiquetas_vecinos)
         probabilidades = {clase: conteo.get(clase, 0) / total 
                          for clase in set(self.y_train)}
-        
         # Clase con más votos
         clase_predicha = conteo.most_common(1)[0][0]
-        
         return clase_predicha, probabilidades
     
     def predecir_batch(self, X: List[List[float]]) -> List[str]:
@@ -129,52 +115,47 @@ class KMediasCluster:
         self.inercia = 0.0
     
     def _distancia(self, p1: List[float], p2: List[float]) -> float:
-        """Calcula la distancia entre dos puntos."""
+        """Calcula la distancia entre dos puntos según la métrica elegida."""
         if self.metrica == 'manhattan':
+            # Suma de diferencias absolutas
             return sum(abs(a - b) for a, b in zip(p1, p2))
         else:
+            # Raíz cuadrada de suma de cuadrados
             return math.sqrt(sum((a - b) ** 2 for a, b in zip(p1, p2)))
     
     def ajustar(self, datos: List[List[float]], verbose: bool = False) -> int:
         """
-        Ajusta el modelo a los datos.
-        
-        Returns:
-            Número de iteraciones realizadas
+        Ajusta el modelo a los datos usando el algoritmo K-Medias clásico.
+        Inicializa centroides aleatoriamente y alterna entre asignar puntos y actualizar centroides.
         """
-        # Inicializar centroides (k puntos aleatorios)
+        # Inicializar centroides (k puntos aleatorios del dataset)
         self.centroides = random.sample(datos, self.k)
-        
         for iteracion in range(self.max_iter):
-            # Asignar puntos a clusters
+            # Paso 1: asignar cada punto al centroide más cercano
             nuevas_asignaciones = []
             for punto in datos:
                 distancias = [self._distancia(punto, c) for c in self.centroides]
                 cluster = distancias.index(min(distancias))
                 nuevas_asignaciones.append(cluster)
-            
-            # Verificar convergencia
+            # Verificar convergencia: si no cambian las asignaciones, terminamos
             if nuevas_asignaciones == self.asignaciones:
                 self.asignaciones = nuevas_asignaciones
                 self._calcular_inercia(datos)
                 if verbose:
                     print(f"Convergencia en iteración {iteracion + 1}")
                 return iteracion + 1
-            
             self.asignaciones = nuevas_asignaciones
-            
-            # Actualizar centroides
+            # Paso 2: actualizar centroides como la media de los puntos asignados
             dimension = len(datos[0])
             for j in range(self.k):
                 puntos_cluster = [datos[i] for i, c in enumerate(self.asignaciones) if c == j]
                 if puntos_cluster:
                     self.centroides[j] = [sum(p[d] for p in puntos_cluster) / len(puntos_cluster) 
                                          for d in range(dimension)]
-        
+        # Si no converge antes, calcular inercia final
         self._calcular_inercia(datos)
         if verbose:
             print(f"Máximo de iteraciones alcanzado ({self.max_iter})")
-        
         return self.max_iter
     
     def _calcular_inercia(self, datos: List[List[float]]):
@@ -202,24 +183,20 @@ def normalizar_datos(datos: List[List[float]]) -> Tuple[List[List[float]], List[
     """
     if not datos or not datos[0]:
         return datos, [], []
-    
+    # Normalización z-score: para cada dimensión, restamos la media y dividimos entre la desviación estándar
     dimension = len(datos[0])
     n = len(datos)
-    
     # Calcular medias
     medias = [sum(datos[i][d] for i in range(n)) / n for d in range(dimension)]
-    
-    # Calcular desviaciones estándar
+    # Calcular desviaciones estándar (evitar división por cero)
     varianzas = [sum((datos[i][d] - medias[d]) ** 2 for i in range(n)) / n 
                 for d in range(dimension)]
     desviaciones = [math.sqrt(v) if v > 0 else 1.0 for v in varianzas]
-    
-    # Normalizar
+    # Normalizar cada punto
     datos_norm = []
     for punto in datos:
         punto_norm = [(punto[d] - medias[d]) / desviaciones[d] for d in range(dimension)]
         datos_norm.append(punto_norm)
-    
     return datos_norm, medias, desviaciones
 
 def calcular_exactitud(y_real: List[str], y_pred: List[str]) -> float:
@@ -284,18 +261,15 @@ def modo_demo():
     print("Parte 1: Clasificación con k-NN")
     print("=" * 60)
     
-    # Generar datos
+    # Generar datos sintéticos 2D para tres clases bien separadas
     X, y = generar_datos_clasificacion_2d(n_por_clase=40)
-    
     print(f"Generados {len(X)} puntos en 3 clases")
     print(f"Primeros 5: {[f'[{p[0]:.2f}, {p[1]:.2f}]->{c}' for p, c in zip(X[:5], y[:5])]}")
     print()
-    
-    # Dividir en entrenamiento y prueba
+    # Dividir en entrenamiento (70%) y prueba (30%)
     n_train = int(0.7 * len(X))
     X_train, y_train = X[:n_train], y[:n_train]
     X_test, y_test = X[n_train:], y[n_train:]
-    
     print(f"Conjunto de entrenamiento: {len(X_train)} puntos")
     print(f"Conjunto de prueba: {len(X_test)} puntos")
     print()
@@ -303,13 +277,12 @@ def modo_demo():
     # Entrenar k-NN con diferentes valores de k
     print("Evaluando k-NN con diferentes valores de k:\n")
     
+    # Probar k-NN con diferentes valores de k para ver el efecto en exactitud
     for k in [1, 3, 5, 7]:
         knn = KNN(k=k, metrica='euclidiana')
         knn.entrenar(X_train, y_train)
-        
         y_pred = knn.predecir_batch(X_test)
         exactitud = calcular_exactitud(y_test, y_pred)
-        
         print(f"k={k}: Exactitud = {exactitud:.2%}")
     
     print()
@@ -328,10 +301,10 @@ def modo_demo():
     # Probar con diferentes valores de k
     print("Evaluando K-Medias con diferentes valores de k:\n")
     
+    # Probar K-Medias con diferentes valores de k para ver el efecto en la inercia
     for k in [2, 3, 4, 5]:
         kmeans = KMediasCluster(k=k, max_iter=50, metrica='euclidiana')
         iteraciones = kmeans.ajustar(X, verbose=False)
-        
         print(f"k={k}: Inercia = {kmeans.inercia:.2f}, Iteraciones = {iteraciones}")
     
     print()
@@ -345,13 +318,12 @@ def modo_demo():
     
     print("\nk-NN (k=3) con diferentes métricas:\n")
     
+    # Comparar el efecto de la métrica de distancia en k-NN
     for metrica in ['euclidiana', 'manhattan']:
         knn = KNN(k=3, metrica=metrica)
         knn.entrenar(X_train, y_train)
-        
         y_pred = knn.predecir_batch(X_test)
         exactitud = calcular_exactitud(y_test, y_pred)
-        
         print(f"Métrica {metrica}: Exactitud = {exactitud:.2%}")
     
     print()
@@ -364,24 +336,21 @@ def modo_demo():
     print("=" * 60)
     
     # Crear datos con escalas diferentes
+    # Simular datos con escalas desbalanceadas para mostrar la importancia de la normalización
     X_desbalanceado = [[x[0] * 10, x[1]] for x in X]
     X_train_desb = [[x[0] * 10, x[1]] for x in X_train]
     X_test_desb = [[x[0] * 10, x[1]] for x in X_test]
-    
     print("\nDatos con escala desbalanceada (x0 * 10):")
-    
-    # Sin normalización
+    # Sin normalización: la dimensión x domina la distancia
     knn = KNN(k=3, metrica='euclidiana')
     knn.entrenar(X_train_desb, y_train)
     y_pred = knn.predecir_batch(X_test_desb)
     exactitud_sin_norm = calcular_exactitud(y_test, y_pred)
     print(f"  Sin normalización: Exactitud = {exactitud_sin_norm:.2%}")
-    
-    # Con normalización
+    # Con normalización: ambas dimensiones tienen igual peso
     X_train_norm, medias, desv = normalizar_datos(X_train_desb)
     X_test_norm = [[(x[d] - medias[d]) / desv[d] for d in range(len(x))] 
                    for x in X_test_desb]
-    
     knn_norm = KNN(k=3, metrica='euclidiana')
     knn_norm.entrenar(X_train_norm, y_train)
     y_pred_norm = knn_norm.predecir_batch(X_test_norm)
