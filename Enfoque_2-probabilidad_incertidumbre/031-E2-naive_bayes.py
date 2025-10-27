@@ -30,6 +30,7 @@ class NaiveBayesMultinomial:
     """
     
     def __init__(self, alpha: float = 1.0):
+        # Inicializa el parámetro de suavizado y estructuras para conteos
         """
         Inicializa el clasificador.
         
@@ -51,6 +52,7 @@ class NaiveBayesMultinomial:
         self.n_ejemplos = 0
     
     def entrenar(self, X: List[List[str]], y: List[str]):
+        # Entrenamiento: cuenta clases y características, calcula priors
         """
         Entrena el clasificador con datos de entrenamiento.
         
@@ -76,6 +78,7 @@ class NaiveBayesMultinomial:
             self.prob_clases[clase] = conteo / self.n_ejemplos
     
     def predecir(self, x: List[str]) -> Tuple[str, Dict[str, float]]:
+        # Predicción: calcula log-probabilidades y normaliza para obtener posterior
         """
         Predice la clase de un nuevo ejemplo.
         
@@ -143,6 +146,7 @@ class NaiveBayesGaussiano:
     """
     
     def __init__(self):
+        # Inicializa estructuras para medias y varianzas por clase
         """Inicializa el clasificador."""
         # Estadísticas por clase y característica
         self.medias = defaultdict(dict)      # media[clase][i]
@@ -153,6 +157,7 @@ class NaiveBayesGaussiano:
         self.clases = []
     
     def entrenar(self, X: List[List[float]], y: List[str]):
+        # Entrenamiento: agrupa por clase, calcula medias y varianzas
         """
         Entrena el clasificador con datos de entrenamiento.
         
@@ -189,6 +194,7 @@ class NaiveBayesGaussiano:
                 self.varianzas[clase][i] = max(varianza, 1e-6)
     
     def _pdf_gaussiana(self, x: float, media: float, varianza: float) -> float:
+        # Calcula la densidad de la normal para una característica
         """Calcula la densidad de probabilidad Gaussiana."""
         # Evitar log de números muy pequeños
         exp_term = -0.5 * ((x - media) ** 2) / varianza
@@ -196,6 +202,7 @@ class NaiveBayesGaussiano:
         return coef * math.exp(exp_term)
     
     def predecir(self, x: List[float]) -> Tuple[str, Dict[str, float]]:
+        # Predicción: suma log-likelihoods y normaliza para obtener posterior
         """
         Predice la clase de un nuevo ejemplo.
         
@@ -245,11 +252,13 @@ class NaiveBayesGaussiano:
 
 def calcular_exactitud(y_real: List[str], y_pred: List[str]) -> float:
     """Calcula la exactitud de las predicciones."""
+    # Calcula la proporción de aciertos
     correctos = sum(1 for yr, yp in zip(y_real, y_pred) if yr == yp)
     return correctos / len(y_real)
 
 def matriz_confusion(y_real: List[str], y_pred: List[str]) -> Dict:
     """Calcula la matriz de confusión."""
+    # Construye la matriz de confusión para evaluar el desempeño
     clases = sorted(set(y_real + y_pred))
     matriz = {c: {c2: 0 for c2 in clases} for c in clases}
     
@@ -273,7 +282,7 @@ def modo_demo():
     print("Ejemplo 1: Clasificación de texto (Multinomial)")
     print("=" * 60)
     
-    # Dataset: documentos representados por palabras
+    # Dataset: documentos representados por palabras (multinomial)
     # Clase: "spam" o "ham" (legítimo)
     X_train = [
         ["gratis", "dinero", "gana"],
@@ -294,6 +303,7 @@ def modo_demo():
     print()
     
     # Entrenar clasificador
+    # Entrenamiento del clasificador multinomial
     clf_multi = NaiveBayesMultinomial(alpha=1.0)
     clf_multi.entrenar(X_train, y_train)
     
@@ -303,6 +313,7 @@ def modo_demo():
     print()
     
     # Hacer predicciones
+    # Pruebas de predicción con nuevos documentos
     X_test = [
         ["gratis", "premio", "ahora"],
         ["reunion", "informe", "revision"],
@@ -324,7 +335,7 @@ def modo_demo():
     print("Ejemplo 2: Clasificación con características continuas (Gaussiano)")
     print("=" * 60)
     
-    # Dataset: flores con características [longitud_pétalo, ancho_pétalo]
+    # Dataset: flores con características [longitud_pétalo, ancho_pétalo] (gaussiano)
     random.seed(42)
     
     # Clase "setosa": pétalos pequeños
@@ -340,6 +351,7 @@ def modo_demo():
     y_train_gauss = y_setosa + y_versicolor
     
     # Entrenar clasificador
+    # Entrenamiento del clasificador gaussiano
     clf_gauss = NaiveBayesGaussiano()
     clf_gauss.entrenar(X_train_gauss, y_train_gauss)
     
@@ -358,6 +370,7 @@ def modo_demo():
     print()
     
     # Hacer predicciones
+    # Pruebas de predicción con ejemplos continuos
     X_test_gauss = [
         [1.4, 0.2],   # Debería ser setosa
         [4.5, 1.5],   # Debería ser versicolor
@@ -373,6 +386,7 @@ def modo_demo():
         print()
     
     # Evaluar en conjunto de entrenamiento
+    # Evaluación de exactitud en el conjunto de entrenamiento
     y_pred = [clf_gauss.predecir(x)[0] for x in X_train_gauss]
     exactitud = calcular_exactitud(y_train_gauss, y_pred)
     print(f"Exactitud en entrenamiento: {exactitud:.2%}")
@@ -392,8 +406,8 @@ def modo_interactivo():
     
     tipo = input("Ingrese el número (default=1): ").strip()
     
+    # Clasificador Gaussiano
     if tipo == "2":
-        # Clasificador Gaussiano
         print("\nClasificador Gaussiano")
         print("Ingrese datos de entrenamiento en formato:")
         print("  clase valor1 valor2 ...")
@@ -402,6 +416,7 @@ def modo_interactivo():
         X_train = []
         y_train = []
         
+        # Ingreso de datos de entrenamiento por el usuario
         while True:
             entrada = input("> ").strip()
             if entrada.lower() == "fin":
@@ -410,7 +425,11 @@ def modo_interactivo():
             partes = entrada.split()
             if len(partes) >= 2:
                 clase = partes[0]
-                valores = [float(v) for v in partes[1:]]
+                try:
+                    valores = [float(v) for v in partes[1:]]
+                except ValueError:
+                    print("Valores inválidos: asegúrese de ingresar números para las características.")
+                    continue
                 y_train.append(clase)
                 X_train.append(valores)
         
@@ -418,7 +437,7 @@ def modo_interactivo():
             print("No se ingresaron datos. Usando ejemplo por defecto.")
             return
         
-        # Entrenar
+        # Entrenamiento del modelo gaussiano
         clf = NaiveBayesGaussiano()
         clf.entrenar(X_train, y_train)
         
@@ -430,7 +449,11 @@ def modo_interactivo():
         entrada_test = input("> ").strip()
         
         if entrada_test:
-            valores_test = [float(v) for v in entrada_test.split()]
+            try:
+                valores_test = [float(v) for v in entrada_test.split()]
+            except ValueError:
+                print("Entrada inválida: asegúrese de ingresar números separados por espacios.")
+                return
             clase_pred, probs = clf.predecir(valores_test)
             
             print(f"\nClase predicha: {clase_pred}")
@@ -438,8 +461,8 @@ def modo_interactivo():
             for clase, prob in probs.items():
                 print(f"  P({clase} | x) = {prob:.4f}")
     
+    # Clasificador Multinomial (por defecto)
     else:
-        # Clasificador Multinomial
         print("\nClasificador Multinomial")
         print("Ingrese datos de entrenamiento en formato:")
         print("  clase caracteristica1 caracteristica2 ...")
@@ -448,6 +471,7 @@ def modo_interactivo():
         X_train = []
         y_train = []
         
+        # Ingreso de datos de entrenamiento por el usuario
         while True:
             entrada = input("> ").strip()
             if entrada.lower() == "fin":
@@ -464,8 +488,13 @@ def modo_interactivo():
             print("No se ingresaron datos. Usando ejemplo por defecto.")
             return
         
-        # Entrenar
-        alpha = float(input("\nIngrese parámetro de suavizado alpha (default=1.0): ") or "1.0")
+        # Entrenamiento del modelo multinomial
+        try:
+            alpha = float(input("\nIngrese parámetro de suavizado alpha (default=1.0): ") or "1.0")
+        except ValueError:
+            print("Alpha inválido. Usando alpha=1.0")
+            alpha = 1.0
+        
         clf = NaiveBayesMultinomial(alpha=alpha)
         clf.entrenar(X_train, y_train)
         
