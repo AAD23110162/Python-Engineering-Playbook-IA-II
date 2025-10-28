@@ -13,10 +13,12 @@ El programa puede ejecutarse en dos modos:
 
 Autor: Alejandro Aguirre Díaz
 """
-import re
-from collections import Counter, defaultdict
-import math
-import random
+
+# Importar librerías necesarias
+import re  # Expresiones regulares para tokenización
+from collections import Counter, defaultdict  # Contadores y diccionarios por defecto
+import math  # Funciones matemáticas
+import random  # Muestreo aleatorio
 
 # -----------------------------
 # Utilidades de texto
@@ -25,13 +27,14 @@ def tokenizar(texto):
 	"""
 	Tokeniza un texto en palabras minúsculas usando una expresión regular simple.
 	"""
+	# Extrae palabras en minúsculas usando regex
 	return re.findall(r"[a-záéíóúñü]+", texto.lower())
 
 def preparar_corpus(oraciones):
 	"""
 	Añade marcadores de inicio/fin para bigramas y tokeniza.
 	"""
-	corpus_tokens = []
+	corpus_tokens = []  # Lista de oraciones tokenizadas
 	for oracion in oraciones:
 		tokens = tokenizar(oracion)
 		if not tokens:
@@ -49,13 +52,14 @@ class ModeloLenguaje:
 		Modelo de lenguaje simple con n-gramas (unigramas/bigramas).
 		suavizado_add1: si True, aplica Laplace (add-one) en bigramas.
 		"""
+		# Verifica que n sea 1 o 2
 		assert n in (1, 2), "Solo se soporta n=1 o n=2 en este ejemplo"
-		self.n = n
-		self.suavizado_add1 = suavizado_add1
-		self.unigramas = Counter()
-		self.bigramas = Counter()
-		self.vocab = set()
-		self.total_unigramas = 0
+		self.n = n  # Tipo de modelo (unigrama/bigrama)
+		self.suavizado_add1 = suavizado_add1  # Si aplica suavizado Laplace
+		self.unigramas = Counter()  # Conteo de unigramas
+		self.bigramas = Counter()  # Conteo de bigramas
+		self.vocab = set()  # Vocabulario
+		self.total_unigramas = 0  # Total de unigramas
 
 	def entrenar(self, oraciones):
 		"""
@@ -68,6 +72,7 @@ class ModeloLenguaje:
 			if self.n == 2:
 				for i in range(len(tokens) - 1):
 					self.bigramas[(tokens[i], tokens[i+1])] += 1
+		# Actualizar vocabulario y total de unigramas
 		self.vocab = set(self.unigramas.keys())
 		self.total_unigramas = sum(self.unigramas.values())
 
@@ -77,8 +82,9 @@ class ModeloLenguaje:
 		Si la palabra no existe, retorna una probabilidad pequeña (fuera de vocabulario).
 		"""
 		if w not in self.vocab:
-			# Prob. para OOV: asignar masa muy pequeña
+			# Probabilidad para palabras fuera de vocabulario (OOV)
 			return 1.0 / (self.total_unigramas + len(self.vocab) + 1)
+		# Probabilidad normal
 		return self.unigramas[w] / self.total_unigramas
 
 	def prob_bigrama(self, w_prev, w):
@@ -86,10 +92,11 @@ class ModeloLenguaje:
 		P(w|w_prev) = count(w_prev, w) / count(w_prev)
 		Con suavizado add-one opcional.
 		"""
-		count_prev = self.unigramas[w_prev]
-		count_big = self.bigramas[(w_prev, w)]
-		V = len(self.vocab)
+		count_prev = self.unigramas[w_prev]  # Frecuencia del anterior
+		count_big = self.bigramas[(w_prev, w)]  # Frecuencia del par
+		V = len(self.vocab)  # Tamaño del vocabulario
 		if self.suavizado_add1:
+			# Suavizado Laplace (add-one)
 			return (count_big + 1) / (count_prev + V)
 		# Sin suavizado
 		if count_prev == 0:
@@ -103,11 +110,13 @@ class ModeloLenguaje:
 		if self.n == 1:
 			logp = 0.0
 			for w in tokens:
+				# Suma log-probabilidad de cada palabra
 				logp += math.log(self.prob_unigrama(w) + 1e-12)
 			return logp
 		else:
 			logp = 0.0
 			for i in range(len(tokens) - 1):
+				# Suma log-probabilidad de cada bigrama
 				logp += math.log(self.prob_bigrama(tokens[i], tokens[i+1]) + 1e-12)
 			return logp
 
@@ -121,6 +130,7 @@ class ModeloLenguaje:
 			probs = [self.prob_unigrama(w) for w in vocab_sin_marcas]
 			s = []
 			for _ in range(max_palabras):
+				# Elegir palabra aleatoria según probabilidad
 				w = random.choices(vocab_sin_marcas, weights=probs, k=1)[0]
 				s.append(w)
 			return " ".join(s)
@@ -135,6 +145,7 @@ class ModeloLenguaje:
 				pesos = [self.prob_bigrama(actual, w) for w in candidatos]
 				if sum(pesos) == 0:
 					break
+				# Elegir siguiente palabra según probabilidad condicional
 				w = random.choices(candidatos, weights=pesos, k=1)[0]
 				if w == "</s>":
 					break
@@ -147,12 +158,13 @@ def perplejidad(modelo, corpus_tokens):
 	Calcula la perplejidad sobre un conjunto de oraciones tokenizadas con <s>, </s>.
 	PP = exp( - (1/N) * sum log P(oración) ), N = número total de tokens generativos.
 	"""
-	logp_total = 0.0
-	N = 0
+	logp_total = 0.0  # Suma de log-probabilidades
+	N = 0  # Número de eventos generativos
 	for tokens in corpus_tokens:
 		logp_total += modelo.prob_secuencia(tokens)
-		# Para bigramas, los eventos son pares; pero como métrica educativa, usamos |tokens|-1
+		# Para bigramas, los eventos son pares; para unigramas, palabras
 		N += max(1, len(tokens) - 1 if modelo.n == 2 else len(tokens))
+	# Calcula la perplejidad como exponencial del promedio negativo de log-prob
 	return math.exp(-logp_total / max(1, N))
 
 # -----------------------------
@@ -160,19 +172,24 @@ def perplejidad(modelo, corpus_tokens):
 # -----------------------------
 def modo_demo():
 	print("\n--- MODO DEMO: Modelo de lenguaje con bigramas ---")
+	# Corpus de ejemplo
 	oraciones = [
 		"El gato come pescado",
 		"El perro come carne",
 		"El gato duerme",
 		"La gata come pescado fresco",
 	]
+	# Preparar corpus tokenizado
 	corpus = preparar_corpus(oraciones)
+	# Crear y entrenar modelo de lenguaje
 	modelo = ModeloLenguaje(n=2, suavizado_add1=True)
 	modelo.entrenar(corpus)
 	print("Vocabulario:", sorted(list(modelo.vocab))[:15], "...")
 	print("Generación de ejemplo:")
+	# Generar varias oraciones de ejemplo
 	for _ in range(3):
 		print(" -", modelo.generar())
+	# Calcular perplejidad sobre el corpus de entrenamiento
 	pp = perplejidad(modelo, corpus)
 	print(f"Perplejidad (entrenamiento): {pp:.3f}")
 
@@ -182,6 +199,7 @@ def modo_demo():
 def modo_interactivo():
 	print("\n--- MODO INTERACTIVO: Entrena tu modelo de lenguaje ---")
 	try:
+		# Solicitar corpus y parámetros al usuario
 		texto = input("Ingresa tu corpus (múltiples oraciones separadas por punto):\n> ")
 		n = int(input("n-gramas (1 o 2): "))
 		suav = input("Aplicar suavizado add-one? [s/n]: ").strip().lower() == 's'
@@ -191,6 +209,7 @@ def modo_interactivo():
 		oraciones = ["hola mundo", "hola a todos", "mundo pequeño"]
 		n = 2
 		suav = True
+	# Preparar corpus y entrenar modelo
 	corpus = preparar_corpus(oraciones)
 	modelo = ModeloLenguaje(n=n, suavizado_add1=suav)
 	modelo.entrenar(corpus)
@@ -198,8 +217,10 @@ def modo_interactivo():
 		print("\nOpciones: [g]enerar, [p]erplejidad, [q]uitar")
 		op = input("> ").strip().lower()
 		if op == 'g':
+			# Generar oración
 			print("Generado:", modelo.generar())
 		elif op == 'p':
+			# Calcular perplejidad
 			print(f"Perplejidad: {perplejidad(modelo, corpus):.3f}")
 		elif op == 'q':
 			break
@@ -210,6 +231,7 @@ def modo_interactivo():
 # Menú principal
 # -----------------------------
 if __name__ == "__main__":
+	# Menú principal para seleccionar el modo de ejecución
 	print("\nScript 046-E2-modelo_probabilistico_del_lenguaje_corpus.py")
 	print("Selecciona modo de ejecución:")
 	print("1. DEMO (modelo de lenguaje sobre corpus de ejemplo)")
