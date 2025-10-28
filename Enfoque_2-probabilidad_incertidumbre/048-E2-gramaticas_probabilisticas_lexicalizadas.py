@@ -1,6 +1,6 @@
 """
 048-E2-gramaticas_probabilisticas_lexicalizadas.py
---------------------------------
+----------------------------------------------------
 Este script amplía PCFG a Gramáticas Probabilísticas Lexicalizadas:
 - Asocia reglas con información léxica (cabezas, dependencias).
 - Mejora del parseo al incorporar contexto léxico.
@@ -13,8 +13,10 @@ El programa puede ejecutarse en dos modos:
 
 Autor: Alejandro Aguirre Díaz
 """
-import random
-import math
+
+# Importar librerías necesarias
+import random  # Para muestreo aleatorio
+import math    # Para operaciones matemáticas
 
 # -----------------------------
 # Gramática lexicalizada (simplificada)
@@ -27,18 +29,18 @@ class PCFGLexicalizada:
 	"""
 	def __init__(self):
 		# Probabilidades de estructura (no lexicalizadas)
-		# S -> NP VP
+		# S -> NP VP (siempre)
 		self.p_S = 1.0
-		# NP -> Det N | N
+		# NP puede ser Det N o solo N
 		self.p_NP = {('Det', 'N'): 0.7, ('N',): 0.3}
-		# VP -> V NP | V
+		# VP puede ser V NP o solo V
 		self.p_VP = {('V', 'NP'): 0.6, ('V',): 0.4}
 
-		# Distribuciones lexicalizadas (cabezas)
+		# Distribuciones lexicalizadas (cabezas de sintagmas)
 		self.head_N = {  # P(n|N)
 			'gato': 0.4,
 			'perro': 0.4,
-			'niño': 0.2,
+			'pelota': 0.2,
 		}
 		self.head_V = {  # P(v|V)
 			've': 0.5,
@@ -54,33 +56,38 @@ class PCFGLexicalizada:
 		"""
 		Genera una oración lexicalizando las cabezas.
 		"""
-		# S -> NP VP (determinístico)
-		np = self._gen_np()
-		vp = self._gen_vp()
+		# S -> NP VP (estructura fija)
+		np = self._gen_np()  # Genera el sintagma nominal
+		vp = self._gen_vp()  # Genera el sintagma verbal
 		return ' '.join(np + vp)
 
 	def _gen_np(self):
-		# Elegir estructura NP
+		# Elegir estructura para NP (Det N o N)
 		estructuras = list(self.p_NP.keys())
 		pesos = [self.p_NP[e] for e in estructuras]
 		e = random.choices(estructuras, weights=pesos, k=1)[0]
 		if e == ('Det', 'N'):
+			# Muestrea determinante y nombre
 			det = random.choices(list(self.head_Det), weights=list(self.head_Det.values()), k=1)[0]
 			n = random.choices(list(self.head_N), weights=list(self.head_N.values()), k=1)[0]
 			return [det, n]
 		else:  # ('N',)
+			# Solo nombre
 			n = random.choices(list(self.head_N), weights=list(self.head_N.values()), k=1)[0]
 			return [n]
 
 	def _gen_vp(self):
+		# Elegir estructura para VP (V NP o V)
 		estructuras = list(self.p_VP.keys())
 		pesos = [self.p_VP[e] for e in estructuras]
 		e = random.choices(estructuras, weights=pesos, k=1)[0]
 		v = random.choices(list(self.head_V), weights=list(self.head_V.values()), k=1)[0]
 		if e == ('V', 'NP'):
+			# Muestrea verbo y sintagma nominal
 			np = self._gen_np()
 			return [v] + np
 		else:
+			# Solo verbo
 			return [v]
 
 	def puntuar(self, oracion):
@@ -94,6 +101,7 @@ class PCFGLexicalizada:
 		# Heurística: si longitud >=3 y empieza con determinante, NP=2 palabras; si no, NP=1
 		dets = set(self.head_Det.keys())
 		if len(oracion) >= 2 and oracion[0] in dets:
+			# NP = Det N
 			np = oracion[:2]
 			resto = oracion[2:]
 			estructura_np = ('Det', 'N')
@@ -101,6 +109,7 @@ class PCFGLexicalizada:
 			p_det = self.head_Det.get(np[0], 1e-6)
 			p_n = self.head_N.get(np[1], 1e-6)
 		else:
+			# NP = N
 			np = oracion[:1]
 			resto = oracion[1:]
 			estructura_np = ('N',)
@@ -114,17 +123,21 @@ class PCFGLexicalizada:
 			p_v = self.head_V.get(v, 1e-6)
 			# NP en VP
 			if len(resto) >= 3 and resto[1] in dets:
+				# VP = V Det N
 				p_np2 = self.p_NP[('Det', 'N')]
 				p_det2 = self.head_Det.get(resto[1], 1e-6)
 				p_n2 = self.head_N.get(resto[2], 1e-6)
 			else:
+				# VP = V N
 				p_np2 = self.p_NP[('N',)]
 				p_det2 = 1.0
 				p_n2 = self.head_N.get(resto[1] if len(resto) > 1 else '<vacío>', 1e-6)
 			p_estructura_vp = self.p_VP[('V', 'NP')]
+			# Suma log-probs de todas las partes
 			logp = math.log(self.p_S) + math.log(p_np) + math.log(p_det) + math.log(p_n) \
 				   + math.log(p_estructura_vp) + math.log(p_v) + math.log(p_np2) + math.log(p_det2) + math.log(p_n2)
 		else:
+			# VP = V
 			v = resto[0] if resto else '<vacío>'
 			p_v = self.head_V.get(v, 1e-6)
 			p_estructura_vp = self.p_VP[('V',)]
@@ -139,8 +152,10 @@ def modo_demo():
 	print("\n--- MODO DEMO: PCFG lexicalizada (simplificada) ---")
 	g = PCFGLexicalizada()
 	print("Frases generadas:")
+	# Generar varias frases de ejemplo
 	for _ in range(3):
 		print(" -", g.muestrear())
+	# Puntuación lexicalizada de una oración de ejemplo
 	oracion = "el perro ve el gato".split()
 	print("\nPuntuación lexicalizada de:", ' '.join(oracion))
 	print(f"log-prob ~ {g.puntuar(oracion):.3f}")
@@ -154,11 +169,13 @@ def modo_interactivo():
 	while True:
 		op = input("[g]enerar, [p]untuar, [q]uitar: ").strip().lower()
 		if op == 'g':
+			# Generar frase lexicalizada
 			print(" -", g.muestrear())
 		elif op == 'p':
 			texto = input("Oración a puntuar: ").strip().lower()
 			if not texto:
 				continue
+			# Puntuación lexicalizada de la oración
 			print(f"log-prob ~ {g.puntuar(texto.split()):.3f}")
 		elif op == 'q':
 			break
@@ -169,6 +186,7 @@ def modo_interactivo():
 # Menú principal
 # -----------------------------
 if __name__ == "__main__":
+	# Menú principal para seleccionar el modo de ejecución
 	print("\nScript 048-E2-gramaticas_probabilisticas_lexicalizadas.py")
 	print("Selecciona modo de ejecución:")
 	print("1. DEMO (generación y puntuación lexicalizada)")
