@@ -13,27 +13,31 @@ El programa puede ejecutarse en dos modos:
 
 Autor: Alejandro Aguirre Díaz
 """
-import random
-from collections import defaultdict
-import math
+
+# Importar librerías necesarias
+import random  # Para muestreo aleatorio
+from collections import defaultdict  # Diccionarios con valores por defecto
+import math  # Funciones matemáticas
 
 # -----------------------------
 # PCFG en CNF (A->BC o A->'palabra')
 # -----------------------------
 class PCFG:
 	def __init__(self):
-		# Reglas binarias: A -> B C con prob
+		# Reglas binarias: A -> B C con probabilidad
 		self.binarias = defaultdict(list)  # A -> [(B,C,p), ...]
-		# Reglas léxicas: A -> 'w' con prob
+		# Reglas léxicas: A -> 'w' con probabilidad
 		self.lexicas = defaultdict(list)   # A -> [(w,p), ...]
-		# Conjuntos de no terminales
+		# Conjunto de no terminales
 		self.no_terminales = set()
 
 	def agregar_regla_binaria(self, A, B, C, p):
+		# Añade una regla binaria A -> B C con probabilidad p
 		self.no_terminales.update([A, B, C])
 		self.binarias[A].append((B, C, p))
 
 	def agregar_regla_lexica(self, A, w, p):
+		# Añade una regla léxica A -> 'w' con probabilidad p
 		self.no_terminales.add(A)
 		self.lexicas[A].append((w, p))
 
@@ -41,21 +45,22 @@ class PCFG:
 		"""
 		Genera una oración muestreando reglas según sus probabilidades.
 		"""
-		salida = []
+		salida = []  # Lista para almacenar la oración generada
 		self._generar_rec(simbolo_inicio, salida, max_long)
 		return ' '.join(salida)
 
 	def _generar_rec(self, A, salida, max_long):
+		# Si se alcanza la longitud máxima, detener
 		if len(salida) >= max_long:
 			return
-		# Si hay regla léxica, muestrear entre léxicas con prob acumulada
+		# Si hay regla léxica, muestrear entre léxicas según probabilidad
 		if self.lexicas.get(A):
 			palabras = [w for w, p in self.lexicas[A]]
 			pesos = [p for w, p in self.lexicas[A]]
 			w = random.choices(palabras, weights=pesos, k=1)[0]
 			salida.append(w)
 			return
-		# Si hay binarias, expandir
+		# Si hay reglas binarias, expandir recursivamente
 		if self.binarias.get(A):
 			pares = [(B, C) for (B, C, p) in self.binarias[A]]
 			pesos = [p for (B, C, p) in self.binarias[A]]
@@ -72,7 +77,7 @@ def cky_viterbi(pcfg, oracion):
 	oracion: lista de palabras.
 	"""
 	n = len(oracion)
-	# tablas: score[i][j][A] = log prob máxima para A => w_i..w_j (i inclusive, j exclusivo)
+	# Tablas: score[i][j][A] = log prob máxima para A => w_i..w_j (i inclusive, j exclusivo)
 	score = [[defaultdict(lambda: -math.inf) for _ in range(n+1)] for _ in range(n)]
 	back = [[{} for _ in range(n+1)] for _ in range(n)]
 
@@ -81,9 +86,10 @@ def cky_viterbi(pcfg, oracion):
 		for A, reglas in pcfg.lexicas.items():
 			for (wl, p) in reglas:
 				if wl == w and p > 0:
+					# Asigna el log-prob de la mejor regla léxica
 					score[i][i+1][A] = max(score[i][i+1][A], math.log(p))
 
-	# Relleno CKY
+	# Relleno CKY: para cada posible segmento de la oración
 	for span in range(2, n+1):  # longitud del segmento
 		for i in range(0, n-span+1):
 			j = i + span
@@ -97,22 +103,23 @@ def cky_viterbi(pcfg, oracion):
 						sc = score[k][j][C]
 						if sb == -math.inf or sc == -math.inf:
 							continue
+						# Calcula el log-prob de la derivación binaria
 						val = math.log(p) + sb + sc
 						if val > score[i][j][A]:
 							score[i][j][A] = val
 							back[i][j][A] = (k, B, C)
 
-	# Recuperar árbol desde S
+	# Recuperar árbol desde S (símbolo inicial)
 	if score[0][n]['S'] == -math.inf:
 		return -math.inf, None
 	arbol = reconstruir_arbol(back, pcfg, oracion, 0, n, 'S')
 	return score[0][n]['S'], arbol
 
 def reconstruir_arbol(back, pcfg, oracion, i, j, A):
-	# Caso léxico
+	# Caso léxico: hoja del árbol
 	if j == i+1 and any(w == oracion[i] for (w, _) in pcfg.lexicas.get(A, [])):
 		return f"({A} {oracion[i]})"
-	# Caso binario
+	# Caso binario: nodo interno
 	k, B, C = back[i][j][A]
 	izq = reconstruir_arbol(back, pcfg, oracion, i, k, B)
 	der = reconstruir_arbol(back, pcfg, oracion, k, j, C)
@@ -133,7 +140,7 @@ def modo_demo():
 	# VP -> V NP (0.6) | V (0.4) (para CNF, trataremos V como preterminal léxico)
 	pcfg.agregar_regla_binaria('VP', 'V', 'NP', 0.6)
 
-	# Léxico
+	# Léxico: agregamos determinantes, nombres y verbos
 	for det, p in [('el', 0.5), ('la', 0.5)]:
 		pcfg.agregar_regla_lexica('Det', det, p)
 	for n, p in [('gato', 0.5), ('perro', 0.5)]:
@@ -141,12 +148,12 @@ def modo_demo():
 	for v, p in [('ve', 0.5), ('persigue', 0.5)]:
 		pcfg.agregar_regla_lexica('V', v, p)
 
-	# Generación
+	# Generación de frases de ejemplo
 	print("Frases generadas:")
 	for _ in range(3):
 		print(" -", pcfg.generar('S'))
 
-	# Parseo
+	# Parseo de una oración de ejemplo
 	oracion = "el perro ve el gato".split()
 	puntaje, arbol = cky_viterbi(pcfg, oracion)
 	if arbol:
@@ -162,10 +169,11 @@ def modo_interactivo():
 	print("\n--- MODO INTERACTIVO: Define oraciones y parsea ---")
 	# Usamos la misma gramática de la demo
 	pcfg = PCFG()
+	# Gramática igual a la demo pero con más léxico
 	pcfg.agregar_regla_binaria('S', 'NP', 'VP', 1.0)
 	pcfg.agregar_regla_binaria('NP', 'Det', 'N', 1.0)
 	pcfg.agregar_regla_binaria('VP', 'V', 'NP', 0.7)
-	# Léxico
+	# Léxico: determinantes, nombres y verbos
 	for det, p in [('el', 0.5), ('la', 0.5)]:
 		pcfg.agregar_regla_lexica('Det', det, p)
 	for n, p in [('gato', 0.5), ('perro', 0.5), ('niño', 0.5)]:
@@ -191,6 +199,7 @@ def modo_interactivo():
 # Menú principal
 # -----------------------------
 if __name__ == "__main__":
+	# Menú principal para seleccionar el modo de ejecución
 	print("\nScript 047-E2-gramaticas_probabilisticas_independientes_del_contexto.py")
 	print("Selecciona modo de ejecución:")
 	print("1. DEMO (PCFG + CKY de ejemplo)")
