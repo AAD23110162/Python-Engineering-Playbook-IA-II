@@ -1,4 +1,5 @@
-# Python Engineering Playbook - Inteligencia Artificial II
+# Python Engineering Playbook IA II
+
 
 **Autor:** Alejandro Aguirre Díaz  
 **Descripción:** Continuación directa del repositorio Python-Engineering-Playbook-IA, pero esta vez centrado en algoritmos de búsqueda, toma de decisiones y aprendizaje automático para algoritmos de Inteligencia Artificial que cubren búsqueda, planificación, probabilidad, razonamiento bayesiano, aprendizaje automático y percepción.  
