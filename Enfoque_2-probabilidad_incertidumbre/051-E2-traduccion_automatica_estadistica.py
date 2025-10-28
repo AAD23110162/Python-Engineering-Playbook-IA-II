@@ -1,6 +1,6 @@
 """
 051-E2-traduccion_automatica_estadistica.py
---------------------------------
+---------------------------------------------
 Este script presenta Traducción Automática Estadística (SMT):
 - Modelos de alineación palabra-palabra (IBM) a nivel conceptual.
 - Modelos de frase y decodificación basada en búsquedas aproximadas.
@@ -14,8 +14,10 @@ El programa puede ejecutarse en dos modos:
 
 Autor: Alejandro Aguirre Díaz
 """
-import math
-from collections import defaultdict
+
+# Importar librerías necesarias
+import math  # Operaciones matemáticas
+from collections import defaultdict  # Diccionario con valores por defecto
 
 # -----------------------------
 # IBM Model 1 (simplificado)
@@ -25,35 +27,36 @@ def entrenar_ibm1(pares_bitexto, iteraciones=5):
 	Entrena t(f|e) con EM a partir de pares (f, e).
 	f: frase origen (lista de palabras)  e: frase destino (lista de palabras)
 	"""
-	# Vocabularios
+	# Vocabularios de destino (e) y origen (f)
 	V_e = set()
 	V_f = set()
 	for f, e in pares_bitexto:
 		V_e.update(e)
 		V_f.update(f)
-	V_e.add('NULL')  # palabra nula
+	V_e.add('NULL')  # palabra nula para alineación
 
-	# Inicialización uniforme
+	# Inicialización uniforme de probabilidades t(f|e)
 	t = defaultdict(lambda: 1.0 / len(V_e))  # t[(f,e)]
 
+	# Algoritmo EM: iteraciones
 	for _ in range(iteraciones):
-		count_fe = defaultdict(float)
-		total_e = defaultdict(float)
+		count_fe = defaultdict(float)  # Cuenta conjunta f-e
+		total_e = defaultdict(float)   # Total por e
 
 		for f_sent, e_sent in pares_bitexto:
-			e_ext = ['NULL'] + e_sent
+			e_ext = ['NULL'] + e_sent  # Añadir palabra nula
 			# s_total(f) = sum_e t(f|e)
 			s_total = {}
 			for f in f_sent:
 				s_total[f] = sum(t[(f, e)] for e in e_ext)
-			# Acumular cuentas
+			# Acumular cuentas fraccionales
 			for f in f_sent:
 				for e in e_ext:
 					c = t[(f, e)] / s_total[f]
 					count_fe[(f, e)] += c
 					total_e[e] += c
 
-		# Maximización
+		# Maximización: actualizar t(f|e)
 		for (f, e), val in count_fe.items():
 			t[(f, e)] = val / max(1e-12, total_e[e])
 
@@ -64,8 +67,9 @@ def traducir_palabra_a_palabra(oracion_f, t, V_e):
 	Traduce por argmax_e t(f|e) para cada palabra f.
 	"""
 	traduccion = []
-	candidatos = list(V_e - {'NULL'})
+	candidatos = list(V_e - {'NULL'})  # Todas las palabras destino posibles
 	for f in oracion_f:
+		# Para cada palabra origen, buscar la mejor destino
 		mejor_e = max(candidatos, key=lambda e: t[(f, e)]) if candidatos else 'NULL'
 		traduccion.append(mejor_e)
 	return traduccion
@@ -81,10 +85,12 @@ def modo_demo():
 		("el perro corre".split(), "the dog runs".split()),
 		("el gato corre".split(), "the cat runs".split()),
 	]
+	# Entrenar modelo IBM1 con EM
 	t = entrenar_ibm1(bitexto, iteraciones=8)
 	V_e = set(['NULL'] + "the cat eats dog runs".split())
 	frase = "el gato corre".split()
 	print("Origen:", ' '.join(frase))
+	# Traducir palabra por palabra usando las probabilidades aprendidas
 	traduccion = traducir_palabra_a_palabra(frase, t, V_e)
 	print("Traducción:", ' '.join(traduccion))
 
@@ -94,6 +100,7 @@ def modo_demo():
 def modo_interactivo():
 	print("\n--- MODO INTERACTIVO: Entrena con tu bitexto ---")
 	try:
+		# Solicitar pares de entrenamiento al usuario
 		n = int(input("Número de pares de entrenamiento: "))
 		pares = []
 		for i in range(n):
@@ -108,9 +115,11 @@ def modo_interactivo():
 			("la casa grande".split(), "the big house".split()),
 		]
 		it = 6
+	# Entrenar modelo IBM1 con los pares proporcionados
 	t = entrenar_ibm1(pares, iteraciones=it)
 	V_e = set(['NULL']) | {w for _, e in pares for w in e}
 	while True:
+		# Solicitar frase origen para traducir
 		texto = input("Frase origen para traducir (o 'q' para salir): ").strip().lower()
 		if texto == 'q':
 			break
@@ -122,6 +131,7 @@ def modo_interactivo():
 # Menú principal
 # -----------------------------
 if __name__ == "__main__":
+	# Menú principal para seleccionar el modo de ejecución
 	print("\nScript 051-E2-traduccion_automatica_estadistica.py")
 	print("Selecciona modo de ejecución:")
 	print("1. DEMO (IBM Model 1 simplificado)")
