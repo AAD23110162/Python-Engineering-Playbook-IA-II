@@ -10,14 +10,8 @@
 
 Este repositorio contiene implementaciones educativas de algoritmos fundamentales de Inteligencia Artificial, organizados en dos enfoques:
 
-- **Enfoque 1: Búsqueda y Planificación** - Algoritmos de búsqueda, satisfacción de restricciones, teoría de decisiones y aprendizaje por refuerzo
-- **Enfoque 2: Probabilidad e Incertidumbre** - Razonamiento probabilístico, modelos temporales, aprendizaje bayesiano, redes neuronales y procesamiento del lenguaje
-
-Cada script incluye:
-- ✅ **Comentarios detallados** en español
-- ✅ **Dos modos de ejecución**: DEMO (ejemplos predefinidos) e INTERACTIVO (configuración personalizada)
-- ✅ **Código educativo** que prioriza claridad sobre eficiencia
-
+- **Enfoque 1: Búsqueda de grafos:** Algoritmos de búsqueda de grafos o caracteres, satisfacción de restricciones, teoría de decisiones y aprendizaje por refuerzo
+- **Enfoque 2: Probabilidad e Incertidumbre:**  Razonamiento probabilístico, modelos temporales, aprendizaje bayesiano, redes neuronales y procesamiento del lenguaje
 ---
 
 ## 🔍 Enfoque 1: Búsqueda y Planificación
